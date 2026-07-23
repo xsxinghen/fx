@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script async defer src="https://dsi.mom/tracker.js" data-website-id="cmjqt1ats01ky10ff0mtrz3h2"></script>
+    <title>SSL Certificate Tool (Pure Client-Side)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 核心加密库: jsrsasign (处理 ECC/JWS/EAB/CSR) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
+    <!-- 辅助库: node-forge (仅用于 PFX 导出) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/node-forge/1.3.1/forge.min.js"></script>
+    <style>
+        /* 自定义样式：步骤连接线 */
+        .step-connector { position: absolute; left: 1.25rem; top: 3.5rem; bottom: -1.5rem; width: 2px; background-color: #e5e7eb; z-index: 0; }
+        .step-card:last-child .step-connector { display: none; }
+        .step-circle { width: 2.5rem; height: 2.5rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: bold; position: relative; z-index: 10; transition: all 0.3s ease; }
+        
+        /* 步骤状态 */
+        .step-card { position: relative; padding-left: 4rem; opacity: 0.5; pointer-events: none; transition: all 0.3s ease; }
+        .step-card.active { opacity: 1; pointer-events: auto; }
+        .step-card.active .step-circle { background-color: #3b82f6; color: white; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); }
+        .step-card.done { opacity: 1; }
+        .step-card.done .step-circle { background-color: #10b981; color: white; border-color: #10b981; }
+        .step-card.done .step-connector { background-color: #10b981; }
+
+        /* 注入模式标记 */
+        .injection-badge { display: none; }
+        body.injected .injection-badge { display: inline-flex; }
+        body.injected .manual-inject-btn { display: none; }
+        
+        /* 动画与过渡 */
+        #eabSection { transition: all 0.3s ease; }
+        #eabSection.hidden { display: none; }
+        
+        /* Toast 通知 */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: white; border-left: 4px solid; padding: 12px 20px; border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); animation: slideIn 0.3s ease-out; display: flex; align-items: center; min-width: 300px; max-width: 400px; font-size: 14px; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* 加载动画 */
+        .spinner { animation: spin 1s linear infinite; display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-radius: 50%; border-top-color: transparent; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 滚动条美化 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-8 px-4 text-slate-700 font-sans">
+
+<div class="max-w-6xl mx-auto">
+    <!-- 头部 -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
+                <span data-i18n="title_main">SSL 证书免费申请工具</span> 
+                <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">v3.9 Stable</span>
+            </h1>
+            <p class="text-sm text-slate-500 mt-2 flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span data-i18n="title_sub">基于 Web Crypto API & ACME 协议 | 纯前端运行</span>
+            </p>
+        </div>
+        
+        <div class="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+            <button onclick="resetApp()" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition group flex items-center gap-1" data-i18n-title="btn_reset_title" title="Reset">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <span class="text-xs font-bold hidden sm:inline" data-i18n="btn_reset">重置</span>
+            </button>
+            <div class="h-6 w-px bg-gray-200"></div>
+            <select onchange="changeLang(this.value)" id="langSelect" class="text-sm bg-transparent outline-none cursor-pointer font-medium text-slate-600 hover:text-blue-600">
+                <option value="zh">🇨🇳 中文</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+            <span class="injection-badge items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold ml-2 border border-green-200" data-i18n="badge_injected">
+                🚀 注入模式
+            </span>
+            <button onclick="showInjectionModal()" class="manual-inject-btn text-slate-500 hover:text-blue-600 text-xs font-medium underline ml-2" data-i18n="btn_manual_inject">
+                🔧 无法连接？
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- 左侧：主流程 (8 cols) -->
+        <div class="lg:col-span-8 space-y-0">
+            
+            <!-- Step 1: 账户准备 -->
+            <div id="step1" class="step-card active pb-10">
+                <div class="step-connector"></div>
+                <div class="step-circle absolute left-0 top-0 bg-white border-2 border-gray-300 text-gray-500">1</div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4" data-i18n="step1_title">1. 账户准备</h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1" data-i18n="label_ca">CA 机构</label>
+                                <select id="directoryUrl" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" onchange="checkEAB(); saveInputs();">
+                                    <option value="https://acme-v02.api.letsencrypt.org/directory" data-i18n="opt_le_prod" selected>Let's Encrypt (Production)</option>
+                                    <option value="https://acme.zerossl.com/v2/DV90/directory" data-i18n="opt_zerossl">ZeroSSL</option>
+                                    <option value="https://dv.acme-v02.api.pki.goog/directory" data-i18n="opt_google">Google Trust Services</option>
+                                    <option value="https://acme-staging-v02.api.letsencrypt.org/directory" data-i18n="opt_le_staging">Let's Encrypt (Staging)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="eabSection" class="hidden bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                            <div class="flex items-start gap-2 mb-3">
+                                <span class="text-amber-600 mt-0.5">⚠️</span>
+                                <div>
+                                    <p class="text-xs text-amber-800 font-bold" data-i18n="eab_warning">需要 EAB 凭证</p>
+                                    <p id="eabHelp" class="text-xs text-amber-700 mt-1">Login to CA console to get KID & HMAC Key.</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input id="eabKid" type="text" placeholder="Key ID (KID)" class="w-full border border-amber-300 rounded p-2 text-xs focus:ring-amber-500 focus:border-amber-500" oninput="saveInputs()">
+                                <input id="eabHmacKey" type="password" placeholder="HMAC Key" class="w-full border border-amber-300 rounded p-2 text-xs focus:ring-amber-500 focus:border-amber-500" oninput="saveInputs()">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <input id="emailInput" type="email" placeholder="you@example.com" class="flex-1 border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" data-i18n-placeholder="ph_email" oninput="saveInputs()">
+                            <button onclick="initAccount()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition shadow-sm active:scale-95">
+                                <span data-i18n="btn_connect">连接</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: 域名与订单 -->
+            <div id="step2" class="step-card pb-10">
+                <div class="step-connector"></div>
+                <div class="step-circle absolute left-0 top-0 bg-white border-2 border-gray-300 text-gray-500">2</div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4" data-i18n="step2_title">2. 域名与订单</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1" data-i18n="label_domains">域名列表</label>
+                            <textarea id="domainInput" rows="3" placeholder="example.com, *.example.com" class="w-full border border-gray-300 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" data-i18n-placeholder="ph_domains" oninput="saveInputs()"></textarea>
+                            <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                <span class="text-blue-500">💡</span>
+                                <span data-i18n="tip_wildcard">提示：泛域名需同时申请主域名 (example.com, *.example.com)。</span>
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-end gap-3">
+                            <div class="w-1/3">
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1" data-i18n="label_algo">密钥算法</label>
+                                <select id="keyAlgo" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-gray-50" onchange="saveInputs()">
+                                    <option value="RSA" selected>RSA (2048)</option>
+                                    <option value="ECC">ECC (P-256)</option>
+                                </select>
+                            </div>
+                            <button onclick="createOrder()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition shadow-sm active:scale-95 h-[42px]">
+                                <span data-i18n="btn_order">申请订单</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: DNS 验证 -->
+            <div id="step3" class="step-card pb-10">
+                <div class="step-connector"></div>
+                <div class="step-circle absolute left-0 top-0 bg-white border-2 border-gray-300 text-gray-500">3</div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow hidden" id="step3_container">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4" data-i18n="step3_title">3. 验证域名</h2>
+                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-5">
+                        <p class="text-sm text-blue-800 mb-3 font-bold flex items-center gap-2">
+                            <span class="bg-blue-200 text-blue-700 text-xs px-2 py-0.5 rounded-full">Action</span>
+                            <span data-i18n="dns_guide_pre">请添加 TXT 记录：</span> 
+                        </p>
+                        
+                        <!-- 动态生成验证列表 -->
+                        <div id="dnsList" class="space-y-3"></div>
+                        
+                        <p class="text-xs text-blue-400 mt-3 flex items-center gap-1">
+                            <span>⏳</span> <span data-i18n="tip_dns_wait">添加后请等待 1-2 分钟。</span>
+                        </p>
+                    </div>
+                    <button onclick="verifyAndFinalize()" id="btnVerify" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition transform active:scale-[0.99] flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span data-i18n="btn_verify">验证并下载</span>
+                    </button>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 text-gray-300 text-center text-sm" id="step3_placeholder">
+                    Waiting for order...
+                </div>
+            </div>
+
+            <!-- Step 4: 结果 -->
+            <div id="step4" class="step-card">
+                <div class="step-circle absolute left-0 top-0 bg-white border-2 border-gray-300 text-gray-500">4</div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow hidden" id="step4_container">
+                    <h2 class="text-lg font-bold text-green-600 mb-2 flex items-center gap-2">
+                        <span>🎉</span> <span data-i18n="step4_title">证书签发成功！</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-6" data-i18n="step4_desc">请下载并妥善保存。</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Certificate Block -->
+                        <div class="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                            <div class="bg-slate-100 px-3 py-2 flex justify-between items-center border-b border-slate-200">
+                                <span class="text-xs font-bold text-slate-600">cert.pem (证书)</span>
+                                <div class="flex gap-1">
+                                    <button onclick="copyText(GLOBAL.certPem)" class="p-1 hover:bg-white rounded text-slate-500 hover:text-blue-600" title="Copy">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                                    </button>
+                                    <button onclick="downloadFile('cert.pem', GLOBAL.certPem)" class="p-1 hover:bg-white rounded text-slate-500 hover:text-blue-600" title="Download">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea class="w-full h-32 text-[10px] font-mono p-2 bg-transparent resize-none outline-none text-slate-500" readonly id="certDisplay"></textarea>
+                        </div>
+
+                        <!-- Private Key Block -->
+                        <div class="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                            <div class="bg-slate-100 px-3 py-2 flex justify-between items-center border-b border-slate-200">
+                                <span class="text-xs font-bold text-slate-600">private.key (私钥)</span>
+                                <div class="flex gap-1">
+                                    <button onclick="copyText(GLOBAL.domainKeyPem)" class="p-1 hover:bg-white rounded text-slate-500 hover:text-red-600" title="Copy">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                                    </button>
+                                    <button onclick="downloadFile('private.key', GLOBAL.domainKeyPem)" class="p-1 hover:bg-white rounded text-slate-500 hover:text-red-600" title="Download">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea class="w-full h-32 text-[10px] font-mono p-2 bg-transparent resize-none outline-none text-slate-500" readonly id="keyDisplay"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- PFX Export Block -->
+                    <div class="border-t border-gray-100 pt-4 mt-6">
+                        <div class="flex items-center gap-3 bg-purple-50 p-3 rounded-lg border border-purple-100">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-purple-800 uppercase mb-1">IIS / Tomcat (PFX)</label>
+                                <input type="password" id="pfxPass" placeholder="密码 (可选)" class="w-full border border-purple-200 rounded p-1.5 text-xs bg-white" data-i18n-placeholder="ph_pfx_pass">
+                            </div>
+                            <button onclick="downloadPFX()" class="h-full mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded text-xs transition shadow-sm flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span data-i18n="btn_dl_pfx">导出 PFX</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                 <!-- 占位符 -->
+                 <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 text-gray-300 text-center text-sm" id="step4_placeholder">
+                    Pending completion...
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：实时日志 (4 cols) -->
+        <div class="lg:col-span-4 mt-6 lg:mt-0">
+            <div class="sticky top-6">
+                <div class="bg-slate-900 text-green-400 rounded-xl shadow-lg overflow-hidden border border-slate-800 flex flex-col h-[600px]">
+                    <div class="px-4 py-2 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Terminal Log</span>
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    </div>
+                    <div class="p-4 overflow-y-auto font-mono text-xs leading-5 flex-1 custom-scrollbar" id="logs">
+                        <div class="text-slate-500 italic">System Ready...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+    
+    <footer class="mt-12 text-center text-xs text-gray-400 pb-4">
+        &copy; 2025 SSL Tool | Local Execution | No Server
+    </footer>
+</div>
+
+<!-- 注入模态框 -->
+<div id="injectionModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-white rounded-xl w-full max-w-3xl p-6 shadow-2xl transform transition-all scale-100 border border-gray-200">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-lg text-red-600 flex items-center gap-2">⚠️ <span data-i18n="modal_title">CORS 限制</span></h3>
+            <button onclick="document.getElementById('injectionModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <p class="text-sm text-gray-600 mb-4" data-i18n="modal_desc">由于浏览器安全策略，纯网页无法直接连接 ACME 接口。请按步骤注入代码：</p>
+        <ol class="list-decimal list-inside text-sm text-gray-700 mb-4 space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <li data-i18n="modal_step1">点击下方 <strong>[复制]</strong>。</li>
+            <li><span data-i18n="modal_step2_pre">打开：</span><a id="targetLink" href="#" target="_blank" class="text-blue-600 underline font-bold mx-1" data-i18n="modal_step2_link">API 页面</a></li>
+            <li data-i18n="modal_step3">按 <kbd class='bg-gray-200 px-1 rounded border'>F12</kbd> 打开控制台。</li>
+            <li class="text-red-600 bg-red-50 p-1.5 rounded border border-red-100 text-xs">
+                <strong data-i18n="modal_step4_strong">重要：</strong><span data-i18n="modal_step4_text">首次粘贴若被拦截，先输入 <code class='bg-white border px-1 rounded text-xs'>allow pasting</code> 回车。</span>
+            </li>
+            <li data-i18n="modal_step5"><strong>粘贴并回车</strong>。</li>
+        </ol>
+        <textarea id="injectionCodeBox" class="w-full h-24 bg-slate-800 text-green-400 p-3 text-xs font-mono mb-4 rounded-lg border border-slate-700 focus:outline-none resize-none" readonly></textarea>
+        <div class="flex justify-end gap-3">
+            <button onclick="document.getElementById('injectionModal').classList.add('hidden')" class="px-4 py-2 text-gray-600 text-sm hover:bg-gray-100 rounded-lg" data-i18n="btn_cancel">取消</button>
+            <button onclick="copyCode()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition" data-i18n="btn_copy">复制</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // UI Helpers
+    function showToast(msg, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const color = type === 'error' ? 'border-red-500 text-red-700' : 'border-green-500 text-slate-700';
+        const icon = type === 'error' ? '❌' : '✅';
+        toast.className = `toast ${color} shadow-lg`;
+        toast.innerHTML = `<span class="mr-2 text-lg">${icon}</span> <span>${msg}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    // I18N & State
+    const I18N = {
+        zh: {
+            title_main: "SSL 证书免费申请工具", title_sub: "基于 Web Crypto API & ACME 协议 | 纯前端运行", badge_injected: "🚀 注入模式", btn_manual_inject: "🔧 无法连接？",
+            step1_title: "1. 账户准备", label_ca: "CA 机构", opt_le_prod: "Let's Encrypt (正式环境)", opt_le_staging: "Let's Encrypt (测试环境)", opt_zerossl: "ZeroSSL (需凭证)", opt_google: "Google Trust Services",
+            eab_warning: "需要 EAB 凭证", ph_email: "邮箱 (用于通知)", btn_connect: "连接",
+            step2_title: "2. 域名与订单", label_domains: "域名列表", ph_domains: "example.com, *.example.com (逗号分隔)", tip_wildcard: "提示：泛域名需同时申请主域名。", label_algo: "密钥算法", btn_order: "申请订单",
+            step3_title: "3. 验证域名", dns_guide_pre: "请添加 TXT 记录：", tip_dns_wait: "添加后请等待 1-2 分钟。", btn_verify: "验证并下载", btn_check_dns: "检查", btn_verifying: "验证中...",
+            step4_title: "证书签发成功！", step4_desc: "请下载并妥善保存。", btn_dl_cert: "下载", btn_dl_key: "下载", btn_copy_text: "复制", btn_dl_pfx: "导出 PFX", ph_pfx_pass: "密码 (可选)",
+            modal_title: "CORS 跨域限制", modal_desc: "由于浏览器安全策略，纯网页无法直接连接 ACME 接口。请按步骤注入代码：", modal_step1: "点击下方 <strong>[复制]</strong>。", modal_step2_pre: "打开：", modal_step2_link: "API 页面", modal_step3: "按 <kbd class='bg-gray-200 px-1 rounded border'>F12</kbd> 打开控制台。", modal_step4_strong: "重要：", modal_step4_text: "首次粘贴若被拦截，先输入 <code class='bg-white border px-1 rounded text-xs'>allow pasting</code> 回车。", modal_step5: "<strong>粘贴并回车</strong>。", btn_cancel: "取消", btn_copy: "复制",
+            msg_conn_dir: "连接目录:", msg_conn_fail: "连接失败", msg_dir_ok: "✅ 目录已加载", msg_gen_acc_key: "生成账户密钥...", msg_gen_eab: "生成 EAB 签名...", msg_eab_ok: "✅ EAB 签名完成", msg_acc_ok: "🎉 账户已就绪 ID:", msg_enter_email: "请输入邮箱", msg_enter_eab: "请填写完整的 EAB 信息", msg_enter_domain: "请输入域名", msg_order_create: "创建订单...", msg_gen_domain_key: "生成域名密钥...", msg_domain_key_ok: "✅ 域名密钥已生成", msg_order_ok: "订单已创建，需验证", msg_item: "项", msg_fetch_dns: "获取 DNS 记录...", msg_dns_gen: "解析记录:", msg_skip_dns: "跳过:", msg_dns_ready: "✅ DNS 记录已生成", msg_trigger_verify: "触发验证...", msg_triggered: "已触发:", msg_verify_wait: "⏳ 验证中，轮询状态...", msg_verify_timeout: "❌ 验证超时", msg_order_status: "状态:", msg_verify_ok: "✅ 验证通过，提交请求...", msg_verify_fail: "❌ 验证失败", msg_verify_fail_detail: "订单无效。请重新申请订单获取新记录。", msg_order_done: "✅ 完成", msg_gen_csr: "生成 CSR...", msg_csr_ok: "✅ CSR 完成", msg_csr_submit: "提交 CSR...", msg_csr_submit_wait: "⏳ 等待签发...", msg_sign_timeout: "❌ 签发超时", msg_dl_cert: "📥 下载证书...", msg_finish: "🎉 流程结束", msg_congrats: "恭喜！证书申请成功！", lbl_host: "主机记录", lbl_value: "记录值", lbl_full: "完整名:", lbl_tip: "提示:", tip_dns_prefix: "通常只填此部分",
+            tip_dns_check: "查询中...", tip_dns_ok: "✅ 已生效", tip_dns_fail: "❌ 未查到", tip_dns_err: "⚠️ 失败",
+            msg_pfx_fail: "❌ PFX 生成失败 (Forge 库缺失)", msg_copy_ok: "已复制到剪贴板", btn_reset: "重置", btn_reset_title: "重置所有数据并清除缓存"
+        },
+        en: {
+            title_main: "SSL Certificate Tool", title_sub: "Web Crypto API & ACME Protocol | Client-Side Only", badge_injected: "🚀 Injection Mode", btn_manual_inject: "🔧 Can't connect?",
+            step1_title: "1. Account Prep", label_ca: "CA Provider", opt_le_staging: "Let's Encrypt (Staging)", opt_le_prod: "Let's Encrypt (Prod)", opt_zerossl: "ZeroSSL", opt_google: "Google Trust",
+            eab_warning: "EAB Required", ph_email: "Email", btn_connect: "Connect",
+            step2_title: "2. Order", label_domains: "Domains", ph_domains: "example.com, *.example.com", tip_wildcard: "Wildcard tip: add both root & wildcard.", label_algo: "Algorithm", btn_order: "Create Order",
+            step3_title: "3. Verify DNS", dns_guide_pre: "Add TXT Records:", tip_dns_wait: "Wait 1-2 mins after adding.", btn_verify: "Verify & Download", btn_check_dns: "Check", btn_verifying: "Verifying...",
+            step4_title: "Success!", step4_desc: "Download your files.", btn_dl_cert: "Download", btn_dl_key: "Download", btn_copy_text: "Copy", btn_dl_pfx: "Export PFX", ph_pfx_pass: "Password",
+            modal_title: "CORS Detected", modal_desc: "Browser blocks connection. Inject this tool to run:", modal_step1: "Click <strong>[Copy]</strong>.", modal_step2_pre: "Open:", modal_step2_link: "API Page", modal_step3: "Press <kbd class='bg-gray-200 px-1 rounded border'>F12</kbd>.", modal_step4_strong: "Important:", modal_step4_text: "Type <code class='bg-white border px-1 rounded text-xs'>allow pasting</code> if blocked.", modal_step5: "<strong>Paste & Enter</strong>.", btn_cancel: "Cancel", btn_copy: "Copy",
+            msg_conn_dir: "Connecting:", msg_conn_fail: "Failed", msg_dir_ok: "✅ Loaded", msg_gen_acc_key: "Gen Account Key...", msg_gen_eab: "Gen EAB...", msg_eab_ok: "✅ EAB Done", msg_acc_ok: "🎉 Ready ID:", msg_enter_email: "Enter Email", msg_enter_eab: "Enter EAB info", msg_enter_domain: "Enter Domain", msg_order_create: "Creating...", msg_gen_domain_key: "Gen Domain Key...", msg_domain_key_ok: "✅ Key Done", msg_order_ok: "Order created, items:", msg_item: "", msg_fetch_dns: "Fetching DNS...", msg_dns_gen: "Record:", msg_skip_dns: "Skip:", msg_dns_ready: "✅ DNS Ready", msg_trigger_verify: "Triggering...", msg_triggered: "Triggered:", msg_verify_wait: "⏳ Verifying...", msg_verify_timeout: "❌ Timeout", msg_order_status: "Status:", msg_verify_ok: "✅ Verified", msg_verify_fail: "❌ Failed", msg_verify_fail_detail: "Order invalid. Please create new order.", msg_order_done: "✅ Done", msg_order_process: "⏳ Processing...", msg_order_ready: "📝 Sending CSR...", msg_order_abnormal: "⚠️ Error:", msg_gen_csr: "Gen CSR...", msg_csr_ok: "✅ CSR Done", msg_csr_submit: "Submitting...", msg_csr_submit_wait: "⏳ Waiting...", msg_sign_timeout: "❌ Timeout", msg_dl_cert: "📥 Downloading...", msg_finish: "🎉 Finished", msg_congrats: "Success!", lbl_host: "Host", lbl_value: "Value", lbl_full: "Full:", lbl_tip: "Tip:", tip_dns_prefix: "Usually just this part",
+            tip_dns_check: "Checking...", tip_dns_ok: "✅ Propagated", tip_dns_fail: "❌ Not Found", tip_dns_err: "⚠️ Error",
+            msg_pfx_fail: "❌ Forge lib missing", msg_copy_ok: "Copied", btn_reset: "Reset", btn_reset_title: "Clear data & cache"
+        }
+    };
+    let CUR_LANG = localStorage.getItem('ssl_tool_lang') || 'zh';
+    if (!I18N[CUR_LANG]) CUR_LANG = 'zh';
+    window.changeLang = function(lang) { CUR_LANG = lang; localStorage.setItem('ssl_tool_lang', lang); document.getElementById('langSelect').value = lang; updatePageText(); }
+    function t(key) { return I18N[CUR_LANG][key] || key; }
+    function updatePageText() {
+        document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (I18N[CUR_LANG][key]) el.innerHTML = I18N[CUR_LANG][key]; });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { const key = el.getAttribute('data-i18n-placeholder'); if (I18N[CUR_LANG][key]) el.placeholder = I18N[CUR_LANG][key]; });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => { const key = el.getAttribute('data-i18n-title'); if (I18N[CUR_LANG][key]) el.title = I18N[CUR_LANG][key]; });
+        checkEAB();
+    }
+
+    // --- State & Helpers ---
+    window.GLOBAL = { urls: {}, accountKey: null, accountKeyPem: "", accountUrl: "", domainKeyPem: "", domainJwk: null, orderUrl: "", authUrls: [], challenges: [], nonce: "", domains: [], algo: "RSA", certPem: "" };
+    function saveInputs() {
+        localStorage.setItem('ssl_tool_email', document.getElementById('emailInput').value);
+        localStorage.setItem('ssl_tool_domains', document.getElementById('domainInput').value);
+        localStorage.setItem('ssl_tool_eab_kid', document.getElementById('eabKid').value);
+        localStorage.setItem('ssl_tool_eab_hmac', document.getElementById('eabHmacKey').value);
+        localStorage.setItem('ssl_tool_dir', document.getElementById('directoryUrl').value);
+        localStorage.setItem('ssl_tool_algo', document.getElementById('keyAlgo').value);
+    }
+    function loadInputs() {
+        if(localStorage.getItem('ssl_tool_email')) document.getElementById('emailInput').value = localStorage.getItem('ssl_tool_email');
+        if(localStorage.getItem('ssl_tool_domains')) document.getElementById('domainInput').value = localStorage.getItem('ssl_tool_domains');
+        if(localStorage.getItem('ssl_tool_eab_kid')) document.getElementById('eabKid').value = localStorage.getItem('ssl_tool_eab_kid');
+        if(localStorage.getItem('ssl_tool_eab_hmac')) document.getElementById('eabHmacKey').value = localStorage.getItem('ssl_tool_eab_hmac');
+        if(localStorage.getItem('ssl_tool_dir')) document.getElementById('directoryUrl').value = localStorage.getItem('ssl_tool_dir');
+        if(localStorage.getItem('ssl_tool_algo')) document.getElementById('keyAlgo').value = localStorage.getItem('ssl_tool_algo');
+        checkEAB();
+    }
+    window.resetApp = function() { if(confirm('Reset all data and clear cache?')) { localStorage.clear(); location.reload(); } }
+    window.copyText = function(text) { if (!text) return; const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showToast(t('msg_copy_ok')); }
+    window.checkEAB = function() {
+        const url = document.getElementById('directoryUrl').value;
+        const isZeroSSL = url.includes("zerossl.com"), isGoogle = url.includes("google");
+        if (isZeroSSL || isGoogle) { document.getElementById('eabSection').classList.remove('hidden'); } else { document.getElementById('eabSection').classList.add('hidden'); }
+    }
+
+    // --- Logic ---
+    window.initAccount = async function() {
+        saveInputs();
+        const dirUrl = document.getElementById('directoryUrl').value, email = document.getElementById('emailInput').value;
+        if(!email || email.includes('example.com')) return showToast(t('msg_enter_email'), 'error');
+        const eabKid = document.getElementById('eabKid').value.trim(), eabHmac = document.getElementById('eabHmacKey').value.trim();
+        if (!document.getElementById('eabSection').classList.contains('hidden') && (!eabKid || !eabHmac)) return showToast(t('msg_enter_eab'), 'error');
+
+        log(`${t('msg_conn_dir')} ${dirUrl}`);
+        try {
+            const res = await fetch(dirUrl);
+            if(!res.ok) throw new Error("Connection failed");
+            GLOBAL.urls = await res.json();
+            log(t('msg_dir_ok'));
+            log(t('msg_gen_acc_key'));
+            GLOBAL.accountKey = await window.crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+            GLOBAL.accountKeyPem = await exportPem(GLOBAL.accountKey.privateKey, "PRIVATE KEY");
+            await getNonce();
+            const payload = { termsOfServiceAgreed: true, contact: [`mailto:${email}`] };
+            if (!document.getElementById('eabSection').classList.contains('hidden')) {
+                log(t('msg_gen_eab'));
+                payload.externalAccountBinding = await generateEAB(eabKid, eabHmac, GLOBAL.accountKey, GLOBAL.urls.newAccount);
+                log(t('msg_eab_ok'));
+            }
+            const jws = await signJWS(payload, GLOBAL.urls.newAccount);
+            const regRes = await fetch(GLOBAL.urls.newAccount, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+            if(!regRes.ok) throw new Error(await regRes.text());
+            GLOBAL.accountUrl = regRes.headers.get('Location');
+            log(`${t('msg_acc_ok')} ${GLOBAL.accountUrl.slice(-10)}...`);
+            showToast(t('msg_acc_ok'));
+            activeStep(2);
+        } catch(e) { if (e.name === 'TypeError') { log("❌ " + t('msg_conn_fail')); showInjectionModal(); } else { handleError(e); } }
+    }
+
+    window.createOrder = async function() {
+        saveInputs();
+        const domainStr = document.getElementById('domainInput').value;
+        const domains = [...new Set(domainStr.replace(/，/g, ',').toLowerCase().split(/[,\s\n]+/).map(d => d.trim()).filter(d => d))];
+        if(domains.length === 0) return showToast(t('msg_enter_domain'), 'error');
+        GLOBAL.domains = domains; GLOBAL.algo = document.getElementById('keyAlgo').value;
+
+        log(`${t('msg_order_create')} (${domains.length} domains, ${GLOBAL.algo})`);
+        try {
+            log(`${t('msg_gen_domain_key')} (${GLOBAL.algo})...`);
+            let algoParams = GLOBAL.algo === 'RSA' ? { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" } : { name: "ECDSA", namedCurve: "P-256" };
+            const domainKey = await window.crypto.subtle.generateKey(algoParams, true, ["sign", "verify"]);
+            GLOBAL.domainKeyPem = await exportPem(domainKey.privateKey, "PRIVATE KEY");
+            GLOBAL.domainJwk = await window.crypto.subtle.exportKey("jwk", domainKey.privateKey);
+            log(t('msg_domain_key_ok'));
+
+            const identifiers = domains.map(d => ({ type: "dns", value: d }));
+            let retryCount = 0;
+            while (retryCount < 3) {
+                 try {
+                    await getNonce();
+                    const jws = await signJWS({ identifiers: identifiers }, GLOBAL.urls.newOrder);
+                    const ordRes = await fetch(GLOBAL.urls.newOrder, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+                    if(!ordRes.ok) throw new Error(await ordRes.text());
+                    const ordData = await ordRes.json();
+                    GLOBAL.orderUrl = ordRes.headers.get('Location');
+                    GLOBAL.finalizeUrl = ordData.finalize;
+                    GLOBAL.authUrls = ordData.authorizations;
+                    log(`${t('msg_order_ok')} ${GLOBAL.authUrls.length} ${t('msg_item')}`);
+                    await fetchChallenges();
+                    break; 
+                 } catch(e) { retryCount++; if (retryCount >= 3) throw e; await new Promise(r => setTimeout(r, 1500)); }
+            }
+        } catch(e) { handleError(e); }
+    }
+
+    async function fetchChallenges() {
+        try {
+            GLOBAL.challenges = [];
+            const container = document.getElementById('dnsList'); container.innerHTML = '';
+            const jwk = await window.crypto.subtle.exportKey("jwk", GLOBAL.accountKey.publicKey);
+            const thumbprint = await getThumbprint(jwk);
+            log(t('msg_fetch_dns'));
+
+            for (let i = 0; i < GLOBAL.authUrls.length; i++) {
+                const authUrl = GLOBAL.authUrls[i];
+                let data = null, retryCount = 0;
+                while(retryCount < 3) {
+                    try {
+                        await getNonce();
+                        const jws = await signJWS("", authUrl);
+                        const res = await fetch(authUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        data = await res.json();
+                        break;
+                    } catch (e) { retryCount++; if (retryCount >= 3) throw e; await new Promise(r => setTimeout(r, 1500)); }
+                }
+                const challenge = data.challenges.find(c => c.type === 'dns-01');
+                if(!challenge) { log(`${t('msg_skip_dns')} ${data.identifier.value}`); continue; }
+
+                const token = challenge.token;
+                const keyAuth = `${token}.${thumbprint}`;
+                const txtValue = await sha256Base64Url(keyAuth);
+                const fullHost = `_acme-challenge.${data.identifier.value}`;
+                const domainParts = data.identifier.value.split('.');
+                let prefixHint = "_acme-challenge";
+                if (domainParts.length > 2) prefixHint = `_acme-challenge.${domainParts.slice(0, domainParts.length - 2).join('.')}`;
+
+                GLOBAL.challenges.push({ url: challenge.url, authUrl: authUrl, domain: data.identifier.value });
+                const row = document.createElement('div');
+                row.className = "bg-white p-4 rounded border border-gray-200 shadow-sm hover:shadow-md transition-shadow";
+                row.innerHTML = `<div class="flex flex-col md:flex-row gap-6"><div class="flex-1 min-w-0"><div class="flex items-center justify-between mb-2"><span class="font-bold text-gray-600 text-xs uppercase tracking-wider">${t('lbl_host')}</span><span class="text-[10px] text-gray-400">${t('lbl_full')} ${fullHost}</span></div><div class="relative group"><code class="block text-red-600 font-mono text-sm break-all select-all bg-red-50 p-3 rounded border border-red-100 cursor-text font-bold">${prefixHint}</code><div class="mt-2 text-xs text-gray-500"><p>💡 <strong class="text-gray-700">${t('lbl_tip')}</strong> ${t('tip_dns_prefix')}</p></div></div></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between mb-2"><span class="font-bold text-gray-600 text-xs uppercase tracking-wider">${t('lbl_value')}</span></div><div class="flex items-center gap-2"><code class="flex-1 block text-blue-600 font-mono text-sm break-all select-all bg-blue-50 p-3 rounded border border-blue-100 font-bold cursor-text">${txtValue}</code><button onclick="checkDNSPropagation(this, '${data.identifier.value}', '${txtValue}')" class="ml-2 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs rounded border border-blue-200 transition whitespace-nowrap w-20 text-center justify-center">${t('btn_check_dns')}</button></div><p class="mt-2 text-xs text-gray-400">TXT / TTL Auto</p></div></div>`;
+                container.appendChild(row);
+                log(`[${i+1}/${GLOBAL.authUrls.length}] ${t('msg_dns_gen')} ${data.identifier.value}`);
+            }
+            document.getElementById('step3_container').classList.remove('hidden');
+            document.getElementById('step3_placeholder').classList.add('hidden');
+            activeStep(3);
+            log(t('msg_dns_ready'));
+        } catch(e) { handleError(e); }
+    }
+    
+    window.checkDNSPropagation = async function(btn, domain, expectedValue) {
+        const originalText = btn.innerText;
+        btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${t('tip_dns_check')}`;
+        try {
+            const res = await fetch(`https://cloudflare-dns.com/dns-query?name=_acme-challenge.${domain}&type=TXT`, { headers: { 'Accept': 'application/dns-json' } });
+            const data = await res.json();
+            let found = data.Answer && data.Answer.some(rec => rec.data.replace(/^"|"$/g, '') === expectedValue);
+            if (found) { btn.className = "ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-bold border border-green-200 w-20 text-center"; btn.innerText = t('tip_dns_ok'); }
+            else { btn.className = "ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-bold border border-red-200 w-20 text-center"; btn.innerText = t('tip_dns_fail'); setTimeout(() => { btn.disabled = false; btn.innerText = originalText; btn.className = "ml-2 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs rounded border border-blue-200 transition whitespace-nowrap w-20 text-center"; }, 3000); }
+        } catch (e) { btn.innerText = t('tip_dns_err'); setTimeout(() => { btn.disabled = false; btn.innerText = originalText; }, 3000); }
+    }
+
+    window.verifyAndFinalize = async function() {
+        const btn = document.getElementById('btnVerify');
+        const originalText = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = `<span class="spinner mr-2"></span> ${t('btn_verifying')}`;
+        log(t('msg_trigger_verify'));
+        try {
+            for (const ch of GLOBAL.challenges) {
+                await getNonce();
+                const jws = await signJWS({}, ch.url);
+                await fetch(ch.url, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+                log(`${t('msg_triggered')} ${ch.domain}`);
+            }
+            let attempts = 0, errorCount = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                if(attempts > 60) { clearInterval(poll); btn.disabled = false; btn.innerHTML = originalText; log(t('msg_verify_timeout')); return; }
+                try {
+                    await getNonce();
+                    const jws = await signJWS("", GLOBAL.orderUrl);
+                    const res = await fetch(GLOBAL.orderUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+                    const orderData = await res.json();
+                    errorCount = 0;
+                    log(`[${attempts}] ${t('msg_order_status')} ${orderData.status}`);
+                    if (orderData.status === 'valid' || orderData.status === 'ready') {
+                        clearInterval(poll); log(t('msg_verify_ok'));
+                        try { await finalizeOrder(orderData); } catch (e) { handleError(e); }
+                        finally { btn.disabled = false; btn.innerHTML = originalText; }
+                    } else if (orderData.status === 'invalid') {
+                        clearInterval(poll); btn.disabled = false; btn.innerHTML = originalText;
+                        log(t('msg_verify_fail'));
+                        alert(t('msg_verify_fail_detail'));
+                    }
+                } catch(e) {
+                    errorCount++;
+                    if (errorCount > 5) { clearInterval(poll); btn.disabled = false; btn.innerHTML = originalText; handleError(e); }
+                    else log(`⚠️ Network jitter (${errorCount}/5)...`);
+                }
+            }, 3000);
+        } catch(e) { btn.disabled = false; btn.innerHTML = originalText; handleError(e); }
+    }
+
+    async function finalizeOrder(orderData) {
+        if (orderData.status === 'valid') { await downloadCertificate(orderData.certificate); return; }
+        if (orderData.status === 'ready') { await sendCsr(orderData.finalize); }
+    }
+
+    function RawASN1(hex) { KJUR.asn1.ASN1Object.call(this); this.hTLV = hex; this.getEncodedHex = function() { return this.hTLV; }; }
+    RawASN1.prototype = new KJUR.asn1.ASN1Object();
+
+    async function sendCsr(finalizeUrl) {
+        try {
+            log("🔍 Re-verifying identifiers...");
+            await getNonce();
+            const jwsFetch = await signJWS("", GLOBAL.orderUrl);
+            const resFetch = await fetch(GLOBAL.orderUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jwsFetch) });
+            const orderData = await resFetch.json();
+            const identifiers = orderData.identifiers.map(i => i.value);
+            const mainDomain = identifiers[0];
+            log(`${t('msg_gen_csr')} (SANs: ${identifiers.length})`);
+            await new Promise(r => setTimeout(r, 50));
+
+            let prvKeyObj = KEYUTIL.getKey(GLOBAL.domainJwk);
+            const sigAlg = GLOBAL.algo === 'ECC' ? "SHA256withECDSA" : "SHA256withRSA";
+            let sanContentHex = "";
+            for (let d of identifiers) {
+                let dHex = "";
+                for (let i = 0; i < d.length; i++) dHex += d.charCodeAt(i).toString(16).padStart(2, "0");
+                let len = dHex.length / 2;
+                let lenHex = len < 128 ? len.toString(16).padStart(2, "0") : (len < 256 ? "81" + len.toString(16).padStart(2, "0") : "82" + len.toString(16).padStart(4, "0"));
+                sanContentHex += "82" + lenHex + dHex;
+            }
+            let seqLen = sanContentHex.length / 2;
+            let seqLenHex = seqLen < 128 ? seqLen.toString(16).padStart(2, "0") : (seqLen < 256 ? "81" + seqLen.toString(16).padStart(2, "0") : "82" + seqLen.toString(16).padStart(4, "0"));
+            let sanValueHex = "30" + seqLenHex + sanContentHex;
+            let extSeq = new KJUR.asn1.DERSequence({ array: [ new KJUR.asn1.DERObjectIdentifier({oid: "2.5.29.17"}), new KJUR.asn1.DEROctetString({hex: sanValueHex}) ] });
+            let extsSeq = new KJUR.asn1.DERSequence({ array: [ extSeq ] });
+            let extReq = new KJUR.asn1.DERSequence({ array: [ new KJUR.asn1.DERObjectIdentifier({oid: "1.2.840.113549.1.9.14"}), new KJUR.asn1.DERSet({ array: [ extsSeq ] }) ] });
+            let attrSet = new KJUR.asn1.DERSet({ array: [ extReq ] });
+            let attrHex = "a0" + attrSet.getEncodedHex().substring(2);
+            const x500Name = new KJUR.asn1.x509.X500Name({str: `/CN=${mainDomain}`});
+            const pubKeyInfo = new KJUR.asn1.x509.SubjectPublicKeyInfo(prvKeyObj);
+            let infoSeq = new KJUR.asn1.DERSequence({ array: [ new KJUR.asn1.DERInteger({int: 0}), x500Name, pubKeyInfo, new RawASN1(attrHex) ] });
+            let sig = new KJUR.crypto.Signature({alg: sigAlg});
+            sig.init(prvKeyObj);
+            sig.updateHex(infoSeq.getEncodedHex());
+            let sigHex = sig.sign();
+            let csrSeq = new KJUR.asn1.DERSequence({ array: [ new RawASN1(infoSeq.getEncodedHex()), new KJUR.asn1.x509.AlgorithmIdentifier({name: sigAlg}), new KJUR.asn1.DERBitString({hex: "00" + sigHex}) ] });
+            let csrPem = KJUR.asn1.ASN1Util.getPEMStringFromHex(csrSeq.getEncodedHex(), "CERTIFICATE REQUEST");
+            const csrBase64Url = csrPem.replace(/-----BEGIN [^-]+-----/, '').replace(/-----END [^-]+-----/, '').replace(/\s+/g, '').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            log(t('msg_csr_ok') + ", " + t('msg_csr_submit'));
+            await getNonce();
+            const jws = await signJWS({ csr: csrBase64Url }, finalizeUrl);
+            const res = await fetch(finalizeUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+            const data = await res.json();
+            if (!res.ok) {
+                if (res.status === 403) { log(`⚠️ Retry Polling...`); await pollOrderForCert(); return; }
+                throw new Error(data.detail || JSON.stringify(data));
+            }
+            if (data.status === 'valid') await downloadCertificate(data.certificate);
+            else if (data.status === 'processing') await pollOrderForCert();
+            else throw new Error(t('msg_order_abnormal') + " " + data.status);
+        } catch (e) { handleError(e); }
+    }
+
+    async function pollOrderForCert() {
+        return new Promise((resolve, reject) => {
+            let attempts = 0, readyCount = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                if(attempts > 30) { clearInterval(poll); log(t('msg_sign_timeout')); reject(new Error("Timeout")); return; }
+                try {
+                    await getNonce();
+                    const jws = await signJWS("", GLOBAL.orderUrl);
+                    const res = await fetch(GLOBAL.orderUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+                    const data = await res.json();
+                    log(`[Cert] ${t('msg_order_status')} ${data.status} (${attempts})`);
+                    if (data.status === 'valid') { clearInterval(poll); await downloadCertificate(data.certificate); resolve(); }
+                    else if (data.status === 'invalid') { clearInterval(poll); log("❌ Invalid Order"); resolve(); }
+                    else if (data.status === 'ready') {
+                        readyCount++;
+                        if (readyCount > 2) { clearInterval(poll); log("⚠️ Retrying CSR..."); await sendCsr(data.finalize); resolve(); }
+                    }
+                } catch(e) { clearInterval(poll); handleError(e); reject(e); }
+            }, 3000);
+        });
+    }
+
+    async function downloadCertificate(certUrl) {
+        log(t('msg_dl_cert'));
+        await getNonce();
+        const jws = await signJWS("", certUrl);
+        const res = await fetch(certUrl, { method: 'POST', headers: acmeHeader(), body: JSON.stringify(jws) });
+        const pem = await res.text();
+        GLOBAL.certPem = pem;
+        document.getElementById('keyDisplay').value = GLOBAL.domainKeyPem;
+        document.getElementById('certDisplay').value = pem;
+        document.getElementById('step4_container').classList.remove('hidden');
+        document.getElementById('step4_placeholder').classList.add('hidden');
+        document.getElementById('step3').classList.add('done');
+        activeStep(4);
+        log(t('msg_finish'));
+        setTimeout(() => { showToast(t('msg_congrats')); }, 200);
+    }
+
+    window.downloadPFX = function() {
+        const pass = document.getElementById('pfxPass').value || "";
+        if (typeof forge === 'undefined') return showToast(t('msg_pfx_fail'), 'error');
+        try {
+            const cert = forge.pki.certificateFromPem(GLOBAL.certPem);
+            const privateKey = forge.pki.privateKeyFromPem(GLOBAL.domainKeyPem);
+            const p12Asn1 = forge.pkcs12.toPkcs12Asn1([{ cert: cert, key: privateKey, friendlyName: 'certificate' }], pass);
+            const p12B64 = forge.util.encode64(forge.asn1.toDer(p12Asn1).getBytes());
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:application/x-pkcs12;base64,' + p12B64);
+            element.setAttribute('download', 'certificate.pfx');
+            document.body.appendChild(element); element.click(); document.body.removeChild(element);
+        } catch (e) { console.error(e); showToast("PFX Error: " + e.message, 'error'); }
+    }
+
+    // --- Utils ---
+    async function generateEAB(kid, hmacKeyStr, accountKey, newAccountUrl) {
+        const hmacKeyBytes = base64UrlToUint8Array(hmacKeyStr);
+        const hmacKey = await window.crypto.subtle.importKey("raw", hmacKeyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        const publicJwk = await window.crypto.subtle.exportKey("jwk", accountKey.publicKey);
+        const acmeJwk = { crv: publicJwk.crv, kty: publicJwk.kty, x: publicJwk.x, y: publicJwk.y };
+        const payloadB64 = stringToBase64Url(JSON.stringify(acmeJwk));
+        const protectedB64 = stringToBase64Url(JSON.stringify({ alg: "HS256", kid: kid, url: newAccountUrl }));
+        const signatureBuffer = await window.crypto.subtle.sign("HMAC", hmacKey, new TextEncoder().encode(`${protectedB64}.${payloadB64}`));
+        return { protected: protectedB64, payload: payloadB64, signature: arrayBufferToBase64Url(signatureBuffer) };
+    }
+    function base64UrlToUint8Array(base64Url) {
+        const padding = '='.repeat((4 - base64Url.length % 4) % 4);
+        const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+    }
+    function stringToBase64Url(str) { return arrayBufferToBase64Url(new TextEncoder().encode(str)); }
+    async function getNonce() {
+        let retries = 3;
+        while(retries > 0) {
+            try { const res = await fetch(GLOBAL.urls.newNonce, { method: 'HEAD' }); GLOBAL.nonce = res.headers.get('replay-nonce'); return; } 
+            catch(e) { retries--; if(retries === 0) throw e; await new Promise(r => setTimeout(r, 1000)); }
+        }
+    }
+    async function signJWS(payload, url) {
+        const jwkExport = await window.crypto.subtle.exportKey("jwk", GLOBAL.accountKey.publicKey);
+        const acmeJwk = { crv: jwkExport.crv, kty: jwkExport.kty, x: jwkExport.x, y: jwkExport.y };
+        const header = { alg: "ES256", jwk: acmeJwk, nonce: GLOBAL.nonce, url: url };
+        if(GLOBAL.accountUrl && url !== GLOBAL.urls.newAccount) { delete header.jwk; header.kid = GLOBAL.accountUrl; }
+        const sJWS = KJUR.jws.JWS.sign(null, header, payload === "" ? "" : payload, GLOBAL.accountKeyPem);
+        const [h, p, s] = sJWS.split('.');
+        return { protected: h, payload: p, signature: s };
+    }
+    async function getThumbprint(jwk) {
+        const ordered = { crv: jwk.crv, kty: jwk.kty, x: jwk.x, y: jwk.y };
+        const hash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(ordered)));
+        return arrayBufferToBase64Url(hash);
+    }
+    function sha256Base64Url(str) { return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(arrayBufferToBase64Url); }
+    function arrayBufferToBase64Url(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+    async function exportPem(key, type) {
+        const exported = await window.crypto.subtle.exportKey("pkcs8", key);
+        const exportedAsString = String.fromCharCode(...new Uint8Array(exported));
+        const exportedAsBase64 = window.btoa(exportedAsString);
+        return `-----BEGIN ${type}-----\n${exportedAsBase64.match(/.{1,64}/g).join('\n')}\n-----END ${type}-----`;
+    }
+    function acmeHeader() { return { 'Content-Type': 'application/jose+json' }; }
+    function log(msg) { 
+        const box = document.getElementById('logs'); 
+        box.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`; 
+        box.scrollTop = box.scrollHeight;
+    }
+    function handleError(e) { log(`<span class="text-red-400">Error: ${e.message}</span>`); console.error(e); showToast(e.message, 'error'); }
+    function activeStep(n) {
+        document.querySelectorAll('.step-card').forEach(el => el.classList.remove('active'));
+        document.getElementById('step'+n).classList.add('active');
+        if(n>1) document.getElementById('step'+(n-1)).classList.add('done');
+    }
+    window.downloadFile = function(filename, text) {
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+        document.body.appendChild(element); element.click(); document.body.removeChild(element);
+    }
+    if (window.location.hostname.includes('letsencrypt.org') || window.location.hostname.includes('zerossl') || window.location.hostname.includes('google')) document.body.classList.add('injected');
+    window.showInjectionModal = function() {
+        const url = document.getElementById('directoryUrl').value;
+        document.getElementById('targetLink').href = url;
+        const safeHtml = document.documentElement.outerHTML.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\${/g, '\\${');
+        document.getElementById('injectionCodeBox').value = `document.open();document.write(\`${safeHtml}\`);document.close();setTimeout(()=>{document.body.classList.add('injected')},500);`;
+        document.getElementById('injectionModal').classList.remove('hidden');
+    }
+    window.copyCode = function() { document.getElementById("injectionCodeBox").select(); document.execCommand("copy"); showToast(t('msg_copy_ok')); }
+    loadInputs();
+    changeLang(CUR_LANG);
+</script>
+</body>
+                                                                                                                                                                                                                                                             </html>
