@@ -1,0 +1,20 @@
+{
+  "web_config": {
+    "remote_urls": [
+      "https://gk.ksx.qzz.io",
+      "https://gk-8z2.pages.dev"
+    ],
+    "local_html": "index.html"
+  },
+  "img_config": {
+    "enabled": true,
+    "can_skip": true,
+    "total_time": 0,
+    "images": [
+      {
+        "name": "main.png",
+        "time": 0
+      }
+    ]
+  }
+}

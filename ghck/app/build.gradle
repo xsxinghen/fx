@@ -1,0 +1,68 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.github.king'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.github.king'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "2.2"
+        resourceConfigurations += ['zh']
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+
+packagingOptions {
+        exclude 'META-INF/*.LICENSE'
+        exclude 'META-INF/*.NOTICE'
+        exclude 'META-INF/*.txt'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/LICENSE-FIREBASE'
+        exclude '**/*.debug'
+        exclude '**/*.log'
+        exclude '**/.git/**'
+        exclude '**/.svn/**'
+        exclude '**/.idea/**'
+        exclude '**/build/**'
+        pickFirst 'lib/**/*.so'
+    }
+}
+
+dependencies {
+ 
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.webkit:webkit:1.10.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'androidx.media:media:1.7.0'
+}
+
+
