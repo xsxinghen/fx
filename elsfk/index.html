@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>俄罗斯方块 - 手机版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .game-header {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #ff9ff3, #feca57, #48dbfb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 8px;
+            margin: 0 auto 10px;
+            width: 95%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #feca57;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 10px;
+            flex: 1;
+            max-width: 500px;
+        }
+        
+        .game-content {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 15px;
+            width: 100%;
+        }
+        
+        .game-board-container {
+            position: relative;
+            flex: 2;
+            min-width: 0;
+        }
+        
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background-color: #0a1931;
+        }
+        
+        .side-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 150px;
+            max-width: 170px;
+        }
+        
+        .next-piece-container {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .next-piece-title {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #48dbfb;
+        }
+        
+        #next-piece {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 2px;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+            background-color: rgba(10, 25, 49, 0.7);
+            border-radius: 6px;
+            padding: 4px;
+        }
+        
+        .next-cell {
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+        }
+        
+        .game-controls-panel {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-btn {
+            width: 100%;
+            padding: 12px 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            background: linear-gradient(135deg, #3742fa, #5352ed);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 0 rgba(55, 66, 250, 0.4);
+            transition: all 0.1s ease;
+            font-weight: bold;
+        }
+        
+        .control-btn:last-child {
+            margin-bottom: 0;
+        }
+        
+        .control-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(55, 66, 250, 0.4);
+        }
+        
+        .control-btn.start {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            box-shadow: 0 3px 0 rgba(0, 184, 148, 0.4);
+        }
+        
+        .control-btn.pause {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            box-shadow: 0 3px 0 rgba(253, 203, 110, 0.4);
+        }
+        
+        .control-btn.restart {
+            background: linear-gradient(135deg, #e84393, #fd79a8);
+            box-shadow: 0 3px 0 rgba(232, 67, 147, 0.4);
+        }
+        
+        .direction-controls-panel {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 5px;
+        }
+        
+        .direction-controls-title {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #48dbfb;
+        }
+        
+        .direction-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, auto);
+            gap: 8px;
+            width: 100%;
+        }
+        
+        .direction-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 1.2rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+            min-height: 45px;
+            position: relative;
+        }
+        
+        .direction-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .rotate-btn {
+            grid-column: 2;
+            grid-row: 1;
+            background: linear-gradient(135deg, #ff9ff3, #f368e0);
+            border-color: rgba(255, 159, 243, 0.5);
+        }
+        
+        .left-btn {
+            grid-column: 1;
+            grid-row: 2;
+            background: linear-gradient(135deg, #48dbfb, #0abde3);
+            border-color: rgba(72, 219, 251, 0.5);
+        }
+        
+        .right-btn {
+            grid-column: 3;
+            grid-row: 2;
+            background: linear-gradient(135deg, #48dbfb, #0abde3);
+            border-color: rgba(72, 219, 251, 0.5);
+        }
+        
+        .down-btn {
+            grid-column: 2;
+            grid-row: 2;
+            background: linear-gradient(135deg, #48dbfb, #0abde3);
+            border-color: rgba(72, 219, 251, 0.5);
+        }
+        
+        .drop-btn {
+            grid-column: 1 / 4;
+            grid-row: 3;
+            background: linear-gradient(135deg, #feca57, #ff9f43);
+            border-color: rgba(254, 202, 87, 0.5);
+            font-size: 0.9rem;
+            margin-top: 4px;
+            padding: 8px;
+            min-height: 35px;
+        }
+        
+        .accelerating {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52) !important;
+            animation: pulse 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 0.8; }
+            to { opacity: 1; }
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .game-over h2 {
+            font-size: 1.6rem;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-over p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #feca57;
+        }
+        
+        .game-over-buttons {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 200px;
+        }
+        
+        footer {
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.7rem;
+            padding: 5px;
+            width: 100%;
+            margin-top: auto;
+        }
+        
+        /* 横屏优化 */
+        @media (orientation: landscape) {
+            body {
+                padding: 5px;
+            }
+            
+            .game-container {
+                flex-direction: row;
+                align-items: flex-start;
+                max-width: 95vw;
+                height: 85vh;
+            }
+            
+            .game-content {
+                flex: 2;
+                max-width: 60%;
+                height: 100%;
+            }
+            
+            .game-board-container {
+                height: 100%;
+            }
+            
+            #game-canvas {
+                height: 100%;
+                width: auto;
+                max-width: 100%;
+            }
+            
+            .side-panel {
+                flex: 1;
+                max-width: 180px;
+                gap: 15px;
+                height: 100%;
+                justify-content: flex-start;
+            }
+            
+            .direction-controls-panel {
+                margin-top: 10px;
+            }
+            
+            footer {
+                display: none;
+            }
+        }
+        
+        /* 小屏幕手机优化 */
+        @media (max-height: 700px) and (orientation: portrait) {
+            .game-header {
+                padding: 5px 0;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 3px;
+            }
+            
+            .game-stats {
+                padding: 5px;
+                margin-bottom: 5px;
+            }
+            
+            .stat-value {
+                font-size: 1.2rem;
+            }
+            
+            .side-panel {
+                max-width: 150px;
+                gap: 10px;
+            }
+            
+            .next-piece-container, .game-controls-panel, .direction-controls-panel {
+                padding: 10px;
+            }
+            
+            .direction-btn {
+                min-height: 40px;
+                font-size: 1.1rem;
+            }
+            
+            .drop-btn {
+                min-height: 30px;
+                font-size: 0.8rem;
+                padding: 6px;
+            }
+            
+            footer {
+                padding: 3px;
+                font-size: 0.65rem;
+            }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 350px) {
+            .game-content {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .side-panel {
+                flex-direction: column;
+                max-width: 100%;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            
+            .direction-controls {
+                gap: 6px;
+            }
+            
+            .direction-btn {
+                min-height: 35px;
+                font-size: 1rem;
+            }
+            
+            .drop-btn {
+                min-height: 28px;
+                font-size: 0.8rem;
+                padding: 5px;
+            }
+            
+            .control-btn {
+                padding: 10px 6px;
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* 防止页面滚动 */
+        html, body {
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        /* 确保内容不会超出屏幕 */
+        .game-container {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>俄罗斯方块</h1>
+        <div class="game-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="score">0</span>
+                <span class="stat-label">分数</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="level">1</span>
+                <span class="stat-label">等级</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="lines">0</span>
+                <span class="stat-label">行数</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <div class="game-content">
+            <div class="game-board-container">
+                <canvas id="game-canvas"></canvas>
+                <div class="game-over" id="game-over">
+                    <h2>游戏结束!</h2>
+                    <p>最终分数: <span id="final-score">0</span></p>
+                    <p>最高等级: <span id="final-level">1</span></p>
+                    <div class="game-over-buttons">
+                        <button class="control-btn restart" id="restart-btn">重新开始</button>
+                        <button class="control-btn" id="menu-btn">返回菜单</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="side-panel">
+                <div class="next-piece-container">
+                    <div class="next-piece-title">下一个方块</div>
+                    <div id="next-piece"></div>
+                </div>
+                
+                <div class="game-controls-panel">
+                    <button class="control-btn start" id="start-btn">开始游戏</button>
+                    <button class="control-btn pause" id="pause-btn">暂停</button>
+                    <button class="control-btn restart" id="restart-side-btn">重新开始</button>
+                </div>
+                
+                <div class="direction-controls-panel">
+                    <div class="direction-controls-title">方向控制</div>
+                    <div class="direction-controls">
+                        <button class="direction-btn rotate-btn" id="mobile-rotate">↻</button>
+                        <button class="direction-btn left-btn" id="mobile-left">←</button>
+                        <button class="direction-btn right-btn" id="mobile-right">→</button>
+                        <button class="direction-btn down-btn" id="mobile-down">↓</button>
+                        <button class="direction-btn drop-btn" id="mobile-drop">快速下落</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>俄罗斯方块手机版 - 所有控制都在右侧</p>
+    </footer>
+
+    <script>
+        // 游戏配置
+        const GameConfig = {
+            COLS: 10,
+            ROWS: 20,
+            MIN_BLOCK_SIZE: 12,
+            MAX_BLOCK_SIZE: 20,
+            INITIAL_DROP_INTERVAL: 1000,
+            MIN_DROP_INTERVAL: 50,
+            LEVEL_SPEED_INCREASE: 80,
+            MAX_LEVEL: 20
+        };
+        
+        // 颜色方案
+        const COLORS = [
+            null,
+            '#FF5252', // I - 亮红色
+            '#2196F3', // J - 亮蓝色
+            '#FF9800', // L - 橙色
+            '#FFEB3B', // O - 亮黄色
+            '#4CAF50', // S - 绿色
+            '#9C27B0', // T - 紫色
+            '#00BCD4'  // Z - 青色
+        ];
+        
+        // 方块形状定义
+        const SHAPES = [
+            null,
+            [ // I
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ],
+            [ // J
+                [2, 0, 0],
+                [2, 2, 2],
+                [0, 0, 0]
+            ],
+            [ // L
+                [0, 0, 3],
+                [3, 3, 3],
+                [0, 0, 0]
+            ],
+            [ // O
+                [4, 4],
+                [4, 4]
+            ],
+            [ // S
+                [0, 5, 5],
+                [5, 5, 0],
+                [0, 0, 0]
+            ],
+            [ // T
+                [0, 6, 0],
+                [6, 6, 6],
+                [0, 0, 0]
+            ],
+            [ // Z
+                [7, 7, 0],
+                [0, 7, 7],
+                [0, 0, 0]
+            ]
+        ];
+        
+        // 游戏状态管理
+        class GameState {
+            constructor() {
+                this.board = [];
+                this.currentPiece = null;
+                this.nextPiece = null;
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                this.gameOver = false;
+                this.gameRunning = false;
+                this.dropCounter = 0;
+                this.dropInterval = GameConfig.INITIAL_DROP_INTERVAL;
+                this.lastTime = 0;
+                this.highScore = localStorage.getItem('tetrisHighScore') || 0;
+                this.highLevel = localStorage.getItem('tetrisHighLevel') || 1;
+            }
+            
+            reset() {
+                this.board = Array.from({length: GameConfig.ROWS}, () => 
+                    Array(GameConfig.COLS).fill(0));
+                this.currentPiece = this.createPiece();
+                this.nextPiece = this.createPiece();
+                this.score = 0;
+                this.level = 1;
+                this.lines = 0;
+                this.gameOver = false;
+                this.dropInterval = GameConfig.INITIAL_DROP_INTERVAL;
+                this.dropCounter = 0;
+                this.lastTime = 0;
+            }
+            
+            createPiece() {
+                const pieceId = Math.floor(Math.random() * 7) + 1;
+                return {
+                    shape: SHAPES[pieceId],
+                    color: COLORS[pieceId],
+                    id: pieceId,
+                    x: Math.floor(GameConfig.COLS / 2) - Math.floor(SHAPES[pieceId][0].length / 2),
+                    y: 0
+                };
+            }
+            
+            updateHighScore() {
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                    localStorage.setItem('tetrisHighScore', this.highScore);
+                }
+                if (this.level > this.highLevel) {
+                    this.highLevel = this.level;
+                    localStorage.setItem('tetrisHighLevel', this.highLevel);
+                }
+            }
+        }
+        
+        // 渲染管理器
+        class Renderer {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.blockSize = 15;
+                this.gradientCache = null;
+                this.gridCache = null;
+            }
+            
+            setBlockSize(size) {
+                this.blockSize = Math.max(
+                    GameConfig.MIN_BLOCK_SIZE, 
+                    Math.min(size, GameConfig.MAX_BLOCK_SIZE)
+                );
+                this.canvas.width = GameConfig.COLS * this.blockSize;
+                this.canvas.height = GameConfig.ROWS * this.blockSize;
+                this.gradientCache = null;
+                this.gridCache = null;
+            }
+            
+            getBlockSize() {
+                return this.blockSize;
+            }
+            
+            drawBoard(board) {
+                // 绘制缓存的渐变背景
+                if (!this.gradientCache) {
+                    const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+                    gradient.addColorStop(0, '#0a1931');
+                    gradient.addColorStop(1, '#1a3a5f');
+                    this.gradientCache = gradient;
+                }
+                this.ctx.fillStyle = this.gradientCache;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制缓存的网格线
+                if (!this.gridCache) {
+                    this.createGridCache();
+                }
+                this.gridCache();
+                
+                // 绘制已固定的方块
+                for (let y = 0; y < GameConfig.ROWS; y++) {
+                    for (let x = 0; x < GameConfig.COLS; x++) {
+                        if (board[y][x]) {
+                            this.drawBlock(x, y, COLORS[board[y][x]]);
+                        }
+                    }
+                }
+            }
+            
+            createGridCache() {
+                const canvas = document.createElement('canvas');
+                canvas.width = this.canvas.width;
+                canvas.height = this.canvas.height;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 0.5;
+                
+                // 垂直线
+                for (let i = 0; i <= GameConfig.COLS; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * this.blockSize, 0);
+                    ctx.lineTo(i * this.blockSize, this.canvas.height);
+                    ctx.stroke();
+                }
+                
+                // 水平线
+                for (let j = 0; j <= GameConfig.ROWS; j++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, j * this.blockSize);
+                    ctx.lineTo(this.canvas.width, j * this.blockSize);
+                    ctx.stroke();
+                }
+                
+                this.gridCache = () => {
+                    this.ctx.drawImage(canvas, 0, 0);
+                };
+            }
+            
+            drawBlock(x, y, color) {
+                const blockSize = this.blockSize;
+                
+                // 绘制方块主体
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
+                
+                // 绘制内部高光
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.fillRect(x * blockSize + 2, y * blockSize + 2, blockSize - 4, 3);
+                this.ctx.fillRect(x * blockSize + 2, y * blockSize + 2, 3, blockSize - 4);
+                
+                // 绘制边框
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                this.ctx.lineWidth = 1.5;
+                this.ctx.strokeRect(x * blockSize + 0.5, y * blockSize + 0.5, blockSize - 1, blockSize - 1);
+                
+                // 绘制内阴影
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x * blockSize + 1, y * blockSize + blockSize - 1);
+                this.ctx.lineTo(x * blockSize + blockSize - 1, y * blockSize + blockSize - 1);
+                this.ctx.lineTo(x * blockSize + blockSize - 1, y * blockSize + 1);
+                this.ctx.stroke();
+            }
+            
+            drawPiece(piece) {
+                if (!piece) return;
+                
+                piece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value !== 0) {
+                            this.drawBlock(piece.x + x, piece.y + y, piece.color);
+                        }
+                    });
+                });
+            }
+        }
+        
+        // 游戏逻辑管理器
+        class GameLogic {
+            constructor(gameState) {
+                this.state = gameState;
+            }
+            
+            collide(piece, dx = 0, dy = 0) {
+                for (let y = 0; y < piece.shape.length; y++) {
+                    for (let x = 0; x < piece.shape[y].length; x++) {
+                        if (piece.shape[y][x] !== 0) {
+                            const newX = piece.x + x + dx;
+                            const newY = piece.y + y + dy;
+                            
+                            if (newX < 0 || newX >= GameConfig.COLS || newY >= GameConfig.ROWS) {
+                                return true;
+                            }
+                            
+                            if (newY >= 0 && this.state.board[newY] && this.state.board[newY][newX]) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            rotatePiece(piece) {
+                const rows = piece.shape.length;
+                const cols = piece.shape[0].length;
+                const rotated = [];
+                
+                for (let i = 0; i < cols; i++) {
+                    rotated.push([]);
+                    for (let j = rows - 1; j >= 0; j--) {
+                        rotated[i].push(piece.shape[j][i]);
+                    }
+                }
+                
+                const originalShape = piece.shape;
+                piece.shape = rotated;
+                
+                if (this.collide(piece)) {
+                    piece.shape = originalShape;
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            mergePiece() {
+                this.state.currentPiece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value !== 0) {
+                            const boardY = this.state.currentPiece.y + y;
+                            if (boardY >= 0) {
+                                this.state.board[boardY][this.state.currentPiece.x + x] = this.state.currentPiece.id;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            clearLines() {
+                let linesCleared = 0;
+                
+                for (let y = GameConfig.ROWS - 1; y >= 0; y--) {
+                    if (this.state.board[y].every(cell => cell !== 0)) {
+                        this.state.board.splice(y, 1);
+                        this.state.board.unshift(Array(GameConfig.COLS).fill(0));
+                        linesCleared++;
+                        y++;
+                    }
+                }
+                
+                if (linesCleared > 0) {
+                    this.updateScore(linesCleared);
+                    return true;
+                }
+                return false;
+            }
+            
+            updateScore(linesCleared) {
+                const lineScores = [0, 100, 300, 500, 800];
+                const addScore = lineScores[linesCleared] * this.state.level;
+                
+                this.state.score += addScore;
+                this.state.lines += linesCleared;
+                
+                const newLevel = Math.floor(this.state.lines / 10) + 1;
+                if (newLevel > this.state.level && newLevel <= GameConfig.MAX_LEVEL) {
+                    this.state.level = newLevel;
+                    this.state.dropInterval = Math.max(
+                        GameConfig.MIN_DROP_INTERVAL, 
+                        GameConfig.INITIAL_DROP_INTERVAL - (this.state.level - 1) * GameConfig.LEVEL_SPEED_INCREASE
+                    );
+                }
+            }
+            
+            movePiece(dx, dy) {
+                if (!this.state.gameRunning || this.state.gameOver) return false;
+                
+                if (!this.collide(this.state.currentPiece, dx, dy)) {
+                    this.state.currentPiece.x += dx;
+                    this.state.currentPiece.y += dy;
+                    return true;
+                }
+                
+                if (dy > 0) {
+                    this.mergePiece();
+                    this.clearLines();
+                    
+                    this.state.currentPiece = this.state.nextPiece;
+                    this.state.nextPiece = this.state.createPiece();
+                    
+                    if (this.collide(this.state.currentPiece)) {
+                        this.state.gameOver = true;
+                        this.state.gameRunning = false;
+                        this.state.updateHighScore();
+                        return false;
+                    }
+                }
+                
+                return false;
+            }
+            
+            hardDrop() {
+                if (!this.state.gameRunning || this.state.gameOver) return;
+                
+                while (this.movePiece(0, 1)) {
+                    // 继续下落直到碰撞
+                }
+            }
+        }
+        
+        // 下一个方块预览渲染器
+        class NextPieceRenderer {
+            constructor(container) {
+                this.container = container;
+                this.cells = Array.from({length: 16}, () => {
+                    const cell = document.createElement('div');
+                    cell.className = 'next-cell';
+                    return cell;
+                });
+                this.container.append(...this.cells);
+            }
+            
+            render(piece) {
+                if (!piece) return;
+                
+                const shape = piece.shape;
+                const color = piece.color;
+                const rows = shape.length;
+                const cols = shape[0].length;
+                
+                const startRow = Math.floor((4 - rows) / 2);
+                const startCol = Math.floor((4 - cols) / 2);
+                
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        const cell = this.cells[y * 4 + x];
+                        const shapeY = y - startRow;
+                        const shapeX = x - startCol;
+                        
+                        if (shapeY >= 0 && shapeY < rows && 
+                            shapeX >= 0 && shapeX < cols && 
+                            shape[shapeY][shapeX] !== 0) {
+                            cell.style.backgroundColor = color;
+                            cell.style.boxShadow = 'inset 0 0 3px rgba(255, 255, 255, 0.3)';
+                            cell.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                        } else {
+                            cell.style.backgroundColor = 'transparent';
+                            cell.style.boxShadow = 'none';
+                            cell.style.border = 'none';
+                        }
+                    }
+                }
+            }
+            
+            clear() {
+                this.cells.forEach(cell => {
+                    cell.style.backgroundColor = 'transparent';
+                    cell.style.boxShadow = 'none';
+                    cell.style.border = 'none';
+                });
+            }
+        }
+        
+        // 主游戏控制器
+        class GameController {
+            constructor() {
+                this.state = new GameState();
+                this.renderer = null;
+                this.logic = new GameLogic(this.state);
+                this.nextPieceRenderer = null;
+                this.animationFrameId = null;
+                this.downInterval = null;
+                this.isAccelerating = false;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.calculateBlockSize();
+                this.initializeRenderer();
+                this.resetGame();
+            }
+            
+            initializeElements() {
+                this.canvas = document.getElementById('game-canvas');
+                this.scoreElement = document.getElementById('score');
+                this.levelElement = document.getElementById('level');
+                this.linesElement = document.getElementById('lines');
+                this.nextPieceElement = document.getElementById('next-piece');
+                this.finalScoreElement = document.getElementById('final-score');
+                this.finalLevelElement = document.getElementById('final-level');
+                this.gameOverElement = document.getElementById('game-over');
+                
+                this.startBtn = document.getElementById('start-btn');
+                this.pauseBtn = document.getElementById('pause-btn');
+                this.restartBtn = document.getElementById('restart-btn');
+                this.restartSideBtn = document.getElementById('restart-side-btn');
+                this.menuBtn = document.getElementById('menu-btn');
+                
+                this.mobileRotate = document.getElementById('mobile-rotate');
+                this.mobileLeft = document.getElementById('mobile-left');
+                this.mobileRight = document.getElementById('mobile-right');
+                this.mobileDown = document.getElementById('mobile-down');
+                this.mobileDrop = document.getElementById('mobile-drop');
+            }
+            
+            calculateBlockSize() {
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                const isLandscape = screenWidth > screenHeight;
+                
+                if (isLandscape) {
+                    const availableHeight = screenHeight * 0.7;
+                    this.blockSize = Math.floor(availableHeight / GameConfig.ROWS);
+                } else {
+                    const availableWidth = Math.min(screenWidth * 0.55, 240);
+                    this.blockSize = Math.floor(availableWidth / GameConfig.COLS);
+                }
+            }
+            
+            initializeRenderer() {
+                this.renderer = new Renderer(this.canvas);
+                this.renderer.setBlockSize(this.blockSize);
+                this.nextPieceRenderer = new NextPieceRenderer(this.nextPieceElement);
+            }
+            
+            setupEventListeners() {
+                // 键盘控制
+                document.addEventListener('keydown', this.handleKeyDown.bind(this));
+                
+                // 游戏控制按钮
+                this.startBtn.addEventListener('click', () => this.startGame());
+                this.pauseBtn.addEventListener('click', () => this.togglePause());
+                this.restartBtn.addEventListener('click', () => this.resetAndStartGame());
+                this.restartSideBtn.addEventListener('click', () => this.resetAndStartGame());
+                this.menuBtn.addEventListener('click', () => this.showMenu());
+                
+                // 移动控制按钮
+                this.mobileRotate.addEventListener('click', () => this.rotateCurrentPiece());
+                this.mobileLeft.addEventListener('click', () => this.moveLeft());
+                this.mobileRight.addEventListener('click', () => this.moveRight());
+                this.mobileDown.addEventListener('click', () => this.moveDown());
+                this.mobileDrop.addEventListener('click', () => this.hardDrop());
+                
+                // 长按加速
+                this.mobileDown.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.startAccelerate();
+                });
+                
+                this.mobileDown.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.stopAccelerate();
+                });
+                
+                this.mobileDown.addEventListener('touchcancel', (e) => {
+                    e.preventDefault();
+                    this.stopAccelerate();
+                });
+                
+                // 防止游戏区域滚动
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+                
+                // 窗口大小调整
+                window.addEventListener('resize', () => this.handleResize());
+                
+                // 页面可见性变化
+                document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+            }
+            
+            handleKeyDown(event) {
+                if (!this.state.gameRunning || this.state.gameOver) return;
+                
+                // 只阻止游戏控制键的默认行为
+                const controlKeys = [37, 38, 39, 40, 32, 80];
+                if (controlKeys.includes(event.keyCode)) {
+                    event.preventDefault();
+                }
+                
+                switch (event.keyCode) {
+                    case 37: this.moveLeft(); break;
+                    case 39: this.moveRight(); break;
+                    case 40: this.moveDown(); break;
+                    case 38: this.rotateCurrentPiece(); break;
+                    case 32: this.hardDrop(); break;
+                    case 80: this.togglePause(); break;
+                }
+            }
+            
+            handleResize() {
+                this.calculateBlockSize();
+                this.renderer.setBlockSize(this.blockSize);
+                this.render();
+            }
+            
+            handleVisibilityChange() {
+                if (document.hidden && this.state.gameRunning && !this.state.gameOver) {
+                    this.togglePause();
+                }
+            }
+            
+            rotateCurrentPiece() {
+                if (this.state.gameRunning && !this.state.gameOver) {
+                    this.logic.rotatePiece(this.state.currentPiece);
+                    this.render();
+                }
+            }
+            
+            moveLeft() {
+                if (this.state.gameRunning && !this.state.gameOver) {
+                    this.logic.movePiece(-1, 0);
+                    this.render();
+                }
+            }
+            
+            moveRight() {
+                if (this.state.gameRunning && !this.state.gameOver) {
+                    this.logic.movePiece(1, 0);
+                    this.render();
+                }
+            }
+            
+            moveDown() {
+                if (this.state.gameRunning && !this.state.gameOver) {
+                    this.logic.movePiece(0, 1);
+                    this.render();
+                }
+            }
+            
+            hardDrop() {
+                if (this.state.gameRunning && !this.state.gameOver) {
+                    this.logic.hardDrop();
+                    this.render();
+                    this.updateDisplay();
+                    this.checkGameOver();
+                }
+            }
+            
+            startAccelerate() {
+                if (!this.state.gameRunning || this.state.gameOver || this.downInterval) return;
+                
+                this.isAccelerating = true;
+                this.mobileDown.classList.add('accelerating');
+                
+                this.downInterval = setInterval(() => {
+                    if (this.state.gameRunning && !this.state.gameOver) {
+                        this.logic.movePiece(0, 1);
+                        this.render();
+                    } else {
+                        this.stopAccelerate();
+                    }
+                }, 100);
+            }
+            
+            stopAccelerate() {
+                if (this.downInterval) {
+                    clearInterval(this.downInterval);
+                    this.downInterval = null;
+                }
+                this.isAccelerating = false;
+                this.mobileDown.classList.remove('accelerating');
+            }
+            
+            startGame() {
+                if (this.state.gameOver) {
+                    this.resetGame();
+                }
+                
+                this.state.gameRunning = true;
+                this.startBtn.textContent = '继续游戏';
+                this.pauseBtn.textContent = '暂停';
+                this.state.lastTime = this.getCurrentTime();
+                this.gameLoop();
+            }
+            
+            togglePause() {
+                if (this.state.gameOver) return;
+                
+                this.state.gameRunning = !this.state.gameRunning;
+                
+                if (this.state.gameRunning) {
+                    this.startBtn.textContent = '继续游戏';
+                    this.pauseBtn.textContent = '暂停';
+                    this.state.lastTime = this.getCurrentTime();
+                    this.gameLoop();
+                } else {
+                    this.pauseBtn.textContent = '继续';
+                    this.stopAccelerate();
+                }
+            }
+            
+            resetAndStartGame() {
+                this.resetGame();
+                this.startGame();
+            }
+            
+            resetGame() {
+                this.state.reset();
+                this.stopAccelerate();
+                this.updateDisplay();
+                this.nextPieceRenderer.render(this.state.nextPiece);
+                this.gameOverElement.style.display = 'none';
+                this.render();
+            }
+            
+            showMenu() {
+                this.resetGame();
+                this.state.gameRunning = false;
+                this.startBtn.textContent = '开始游戏';
+                this.pauseBtn.textContent = '暂停';
+                this.gameOverElement.style.display = 'none';
+            }
+            
+            getCurrentTime() {
+                return window.performance && window.performance.now ? 
+                    performance.now() : Date.now();
+            }
+            
+            gameLoop() {
+                if (!this.state.gameRunning || this.state.gameOver) {
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                        this.animationFrameId = null;
+                    }
+                    return;
+                }
+                
+                const currentTime = this.getCurrentTime();
+                const deltaTime = currentTime - this.state.lastTime;
+                this.state.lastTime = currentTime;
+                
+                this.state.dropCounter += deltaTime;
+                if (this.state.dropCounter > this.state.dropInterval) {
+                    this.logic.movePiece(0, 1);
+                    this.state.dropCounter = 0;
+                    this.render();
+                    this.updateDisplay();
+                    this.checkGameOver();
+                }
+                
+                this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            render() {
+                this.renderer.drawBoard(this.state.board);
+                this.renderer.drawPiece(this.state.currentPiece);
+            }
+            
+            updateDisplay() {
+                this.scoreElement.textContent = this.state.score;
+                this.levelElement.textContent = this.state.level;
+                this.linesElement.textContent = this.state.lines;
+                this.nextPieceRenderer.render(this.state.nextPiece);
+            }
+            
+            checkGameOver() {
+                if (this.state.gameOver) {
+                    this.finalScoreElement.textContent = this.state.score;
+                    this.finalLevelElement.textContent = this.state.level;
+                    this.gameOverElement.style.display = 'flex';
+                    this.stopAccelerate();
+                    this.state.gameRunning = false;
+                    
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                        this.animationFrameId = null;
+                    }
+                }
+            }
+        }
+        
+        // 初始化游戏
+        let gameController;
+        
+        function init() {
+            try {
+                gameController = new GameController();
+                console.log('俄罗斯方块游戏初始化成功');
+            } catch (error) {
+                console.error('游戏初始化失败:', error);
+                alert('游戏初始化失败，请刷新页面重试');
+            }
+        }
+        
+        // 页面加载完成后初始化游戏
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
