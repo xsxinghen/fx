@@ -67,14 +67,18 @@
         
         <div class="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
 <!--            <div class="h-6 w-px bg-gray-200"></div> -->
-            <button class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition group flex items-center gap-1"href="/fx" target="_blank"> 
-                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <!-- 主页/房屋图标 -->
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2">
-                    </path>
-                </svg>
-                <span class="text-xs font-bold hidden sm:inline">首页</span>              
+            <button class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition group flex items-center gap-1" 
+        onclick="handleHomeClick(event)" 
+        data-i18n-title="btn_home_title" 
+        title="首页">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- 主页/房屋图标 -->
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2">
+        </path>
+    </svg>
+    <span class="text-xs font-bold hidden sm:inline" data-i18n="btn_home">首页</span>
+</button>              
             </button>
             <div class="h-6 w-px bg-gray-200"></div>
             <button onclick="resetApp()" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition group flex items-center gap-1" data-i18n-title="btn_reset_title" title="Reset">
