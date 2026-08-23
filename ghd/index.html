@@ -215,6 +215,7 @@
       </div>
     </div>
   </section>
+  
 <!--
   <section class="card" id="plugin">
     <div class="card-title"><span class="dot"></span> 浏览器插件</div>
@@ -235,7 +236,7 @@
   </div>
 </footer>
 
-<!-- 
+
 <div class="modal-mask" id="pluginModal" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="ic"><i class="fa-solid fa-key"></i></div>
@@ -248,12 +249,97 @@
     </div>
   </div>
 </div>
--->
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ===== 配置 ===== */
-const DEFAULT_SERVERS = ['https://github.dpik.top'];
+const DEFAULT_SERVERS = [
+'https://gh.xh.1qw.top/',
+'https://gh.xh.xioo.me/',
+'https://gh.dpik.top/',
+];
+
+/* ===== 备用节点列表（测速失败时可手动选择） ===== */
+const BACKUP_SERVERS = [
+'https://gh.0044888.xyz/',
+'https://ghfile.geekertao.top',
+'https://github.tbap.top',
+'https://gh-proxy.com',
+'https://ghproxy.net',
+'https://cdn.gh-proxy.com',
+'https://github.dpik.top',
+'https://github-proxy.memory-echoes.cn',
+'https://gh.927223.xyz',
+'https://gh.bugdey.us.kg',
+'https://gh-proxy.net',
+'https://j.1lin.dpdns.org',
+'https://github.starrlzy.cn',
+'https://git.yylx.win',
+'https://ghm.078465.xyz',
+'https://gh.felicity.ac.cn',
+'https://cdn.akaere.online',
+'https://jiashu.1win.eu.org',
+'https://tvv.tw',
+'https://j.1win.ggff.net',
+'https://gitproxy.127731.xyz',
+'https://gh.inkchills.cn',
+'https://gh.catmak.name',
+'https://gh.b52m.cn',
+'https://down.mxw.xx.kg',
+'https://down.mxw.qzz.io',
+'https://github.mxw.qzz.io',
+'https://gh.acmsz.top',
+'https://gh.jjj.gv.uy',
+'https://slink.ltd',
+'https://github.tmby.shop',
+'https://ghpr.cc',
+'https://gh.tryxd.cn',
+'https://gitproxy.click',
+'https://github.chenc.dev',
+'https://gh.ddlc.top',
+'https://gitproxy.mrhjx.cn',
+'https://gh.sixyin.com',
+'https://gh.monlor.com',
+'https://ghpxy.hwinzniej.top',
+'https://git.669966.xyz',
+'https://ghfast.top',
+'https://gh.jasonzeng.dev',
+'https://github.geekery.cn',
+'https://gp.zkitefly.eu.org',
+'https://fastgit.cc',
+'https://ghproxy.1888866.xyz',
+'https://ghp.arslantu.xyz',
+'https://github.ednovas.xyz',
+'https://ghproxy.imciel.com',
+'https://ghproxy.cxkpro.top',
+'https://github.xxlab.tech',
+'https://gh.idayer.com',
+'https://free.cn.eu.org',
+'https://gh.chjina.com',
+'https://ghp.keleyaa.com',
+'https://proxy.yaoyaoling.net',
+'https://ghproxy.monkeyray.net',
+'https://gh.noki.icu',
+'https://g.blfrp.cn',
+'https://githubdog.com',
+'https://gh.meali.top',
+'https://777.z321.cc.cd',
+'https://gg.z321.cc.cd',
+'https://g.z321.cc.cd',
+'https://js.jiangss.shop',
+'https://gap.andyjin.website',
+'https://gh.my-website.ccwu.cc',
+'https://github.ikgy.top',
+'https://gh.07150721.xyz',
+'https://cfgh.ikgy.top',
+'https://xsadwsd.kdns.fr',
+'https://gh.ruan.dpdns.org',
+'https://ghproxy.felicity.land',
+'https://github.nswrz.cn',
+'https://gh.zhai.edu.pl',
+'https://gh.qfmc0721.cc.cd'
+];
 const SERVER_LIST_URL = 'https://raw.githubusercontent.com/xsxinghen/fx/refs/heads/main/ghd/server.txt';
 const SPEED_TIMEOUT = 5000;
 const CONCURRENCY = 8; // 8线程并行测速
