@@ -222,7 +222,10 @@
       <div class="plugin-text">
         <p>安装插件后，访问 GitHub 时自动按规则通过加速节点下载，无需手动拼接链接。支持 Edge / Chrome 及兼容内核浏览器。</p>
         <button class="btn" id="pluginDownBtn"><i class="fa-solid fa-download"></i> 下载插件（.crx）</button>
-        <div class="hint" style="margin-top:10px"><i class="fa-solid fa-circle-info"></i> 点击下载后会弹出蓝奏云提取码；若浏览器提示"无法添加来自此网站的应用"，请先在 <code>chrome://extensions</code> 开启"开发者模式"后拖入 .crx 安装。</div>
+        <div class="hint" style="margin-top:10px"><i class="fa-solid fa-circle-info"></i> 
+        1️⃣ 下载完成后解压 → 进入浏览器插件管理 → 开启"开发者模式" → 点击“加载解压缩的扩展” → 选择解压后的文件夹进行安装。
+        <br>
+        2️⃣ 下载完成后后缀可改为（.crx）→ 进入浏览器插件管理 → 开启"开发者模式" → 拖入 .crx 安装。</div>
       </div>
     </div>
   </section>
@@ -255,7 +258,7 @@
 const DEFAULT_SERVERS = [
 'https://gh.xh.1qw.top/',
 'https://gh.xh.xioo.me/',
-'https://gh.dpik.top/',
+'https://gh.dpik.top/'
 ];
 
 /* ===== 备用节点列表（测速失败时可手动选择） ===== */
