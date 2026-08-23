@@ -1,611 +1,391 @@
-
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Github下载加速</title>
-<meta name="description" content="GitHub 文件下载加速：支持 Releases、Archive、Raw、Gist、API、Git Clone 等资源加速，附带浏览器插件。">
-<link rel="icon" href="https://5sxh.pages.dev/favicon/favicon.ico">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/lib/font-awesome/6.5.1/css/all.min.css">
-<style>
-  :root{
-    --bg:#f6f7f9;
-    --bg-card:#ffffff;
-    --fg:#2c3038;
-    --fg-soft:#5b616c;
-    --line:#e7e9ee;
-    --accent:#6f6cff;
-    --accent-soft:#ecebff;
-    --green:#2da44e;
-    --yellow:#bf8700;
-    --red:#cf222e;
-    --shadow-sm:0 1px 2px rgba(0,0,0,.04);
-    --shadow-md:0 4px 14px rgba(0,0,0,.06);
-    --radius:10px;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  }
-  [data-theme="dark"]{
-    --bg:#1e1f23;
-    --bg-card:#26282e;
-    --fg:#e6e6e6;
-    --fg-soft:#a5aab3;
-    --line:#35383f;
-    --accent:#8b87ff;
-    --accent-soft:#2f2d4a;
-    --shadow-sm:0 1px 2px rgba(0,0,0,.25);
-    --shadow-md:0 6px 18px rgba(0,0,0,.35);
-    --green:#3fb362;
-    --yellow:#d9a200;
-    --red:#e35b5b;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  html{scroll-behavior:smooth;}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-    background:var(--bg);
-    color:var(--fg);
-    line-height:1.7;
-    -webkit-font-smoothing:antialiased;
-    transition:background .25s,color .25s;
-    position:relative;
-    min-height:100vh;
-  }
-  .bg-layer{
-    position:fixed;inset:0;z-index:0;pointer-events:none;
-    background-image:url("https://t.alcy.cc/ycy/");
-    background-size:cover;background-position:center;background-repeat:no-repeat;
-    opacity:.7;
-  }
-  [data-theme="dark"] .bg-layer{opacity:.35;}
-  .wrap{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:0 20px;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub 文件加速</title>
+    <style>
+        /* 全局变量与基础重置 */
+        :root {
+            --primary-color: #0d1117;
+            --secondary-color: #161b22;
+            --text-color: #f0f6fc;
+            --accent-color: #58a6ff;
+            --gradient-start: #24292e;
+            --gradient-end: #0d1117;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --github-corner-bg: #f0f6fc;
+            --github-corner-fg: rgb(21,26,31);
+        }
 
-  .navbar{
-    position:sticky;top:0;z-index:50;
-    background:color-mix(in srgb,var(--bg) 88%,transparent);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    border-bottom:1px solid var(--line);
-  }
-  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:56px;}
-  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--fg);text-decoration:none;}
-  .nav-links{display:flex;align-items:center;gap:14px;}
-  .nav-links a{color:var(--fg-soft);text-decoration:none;font-size:14px;transition:color .2s;display:inline-flex;align-items:center;gap:6px;}
-  .nav-links a:hover{color:var(--accent);}
-  .nav-toggle{background:none;border:none;cursor:pointer;color:var(--fg-soft);font-size:16px;padding:6px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;}
-  .nav-toggle:hover{background:var(--accent-soft);color:var(--accent);}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-  .hero{padding:48px 0 24px;text-align:center;}
-  .hero h1{font-size:29px;line-height:1.35;font-weight:800;letter-spacing:.2px;}
-  .hero h1 .hl{color:var(--accent);}
-  .hero p{margin-top:12px;color:var(--fg-soft);font-size:15px;}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;      /* 使页脚可以自然下推 */
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-  .card{background:color-mix(in srgb,var(--bg-card) 94%,transparent);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:22px;}
-  .card + .card{margin-top:18px;}
-  .card-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;margin-bottom:14px;}
-  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+        /* 主容器：限制宽度并撑开高度 */
+        .main-wrapper {
+            width: 100%;
+            max-width: 800px;
+            flex: 1 0 auto;            /* 占据剩余空间，将页脚推到底部 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-  label.f{display:block;font-size:13px;color:var(--fg-soft);margin-bottom:6px;font-weight:600;}
-  .input-row{display:flex;gap:10px;}
-  input[type="text"]{
-    flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
-    background:var(--bg);color:var(--fg);font-size:14px;font-family:var(--mono);
-    transition:border-color .2s,box-shadow .2s;
-  }
-  input[type="text"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-  .btn{
-    display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border:none;border-radius:9px;
-    font-size:14px;font-weight:600;cursor:pointer;transition:transform .12s,box-shadow .2s,background .2s;color:#fff;background:var(--accent);
-  }
-  .btn:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
-  .btn:active{transform:translateY(0);}
-  .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none;}
-  .btn-ghost{background:transparent;color:var(--fg-soft);border:1px solid var(--line);}
-  .btn-ghost:hover{background:var(--accent-soft);color:var(--accent);border-color:transparent;}
-  .btn-sm{padding:8px 12px;font-size:13px;}
+        .container {
+            width: 100%;
+            padding: 40px 20px;
+            text-align: center;
+        }
 
-  .hint{font-size:12.5px;color:var(--fg-soft);margin-top:9px;}
-  .hint code{background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:5px;font-family:var(--mono);font-size:12px;}
+        .title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+            letter-spacing: -0.5px;
+        }
 
-  .node-select-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  select.node-select{flex:1;min-width:220px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg);font-size:13px;appearance:auto;}
-  .node-info{font-size:12.5px;color:var(--fg-soft);margin-top:8px;}
-  .node-info b{color:var(--fg);font-weight:700;}
+        .title .emoji {
+            display: inline-block;
+            color: #f1fa8c;
+            margin-right: 8px;
+        }
 
-  .res-list{display:flex;flex-direction:column;gap:12px;margin-top:16px;}
-  .res-item{border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:var(--bg);}
-  .res-item.hidden{display:none;}
-  .res-label{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:8px;}
-  .res-label .tag{font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:99px;letter-spacing:.3px;}
-  .res-row{display:flex;gap:8px;align-items:center;}
-  .res-row input.res-input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-card);color:var(--fg);font-size:13px;font-family:var(--mono);width:100%;}
-  .res-row .btn{flex-shrink:0;}
+        .search-container {
+            position: relative;
+            max-width: 600px;
+            margin: 2rem auto;
+        }
 
-  .plugin-box{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
-  .plugin-text{flex:1;min-width:220px;}
-  .plugin-text p{font-size:13.5px;color:var(--fg-soft);margin-bottom:14px;}
+        .search-input {
+            width: 100%;
+            height: 56px;
+            padding: 0 60px 0 24px;
+            font-size: 1rem;
+            color: #1f2937;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
 
-  .modal-mask{position:fixed;inset:0;z-index:90;background:rgba(20,22,28,.45);display:none;align-items:center;justify-content:center;padding:20px;}
-  .modal-mask.show{display:flex;}
-  .modal{background:var(--bg-card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:24px;max-width:420px;width:100%;text-align:center;}
-  .modal .ic{font-size:34px;color:var(--accent);margin-bottom:8px;}
-  .modal h3{font-size:17px;margin-bottom:8px;}
-  .modal p{font-size:13px;color:var(--fg-soft);margin-bottom:14px;}
-  .pw{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--fg);background:var(--accent-soft);border:1px dashed var(--accent);padding:8px 14px;border-radius:9px;}
-  .pw b{color:var(--accent);font-family:var(--mono);font-size:15px;letter-spacing:1px;}
+        .search-input:focus {
+            border-color: var(--accent-color);
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
+        }
 
-  footer{margin-top:40px;border-top:2px solid var(--accent);padding:22px 0 30px;color:var(--fg-soft);font-size:13px;text-align:center;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--accent-soft) 35%,transparent));}
-  footer a{color:var(--accent);text-decoration:none;}
-  footer a:hover{text-decoration:underline;}
-  .foot-icp{display:inline-flex;align-items:center;gap:7px;font-size:13px;}
-  .foot-icp b{font-weight:800;}
+        .search-button {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
 
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:9px;font-size:13px;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:all .25s;z-index:100;}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+        .search-button:hover {
+            background: #4187d7;
+            transform: translateY(-50%) scale(1.05);
+        }
 
-  .spinner{width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;}
-  @keyframes spin{to{transform:rotate(360deg);}}
+        .tips {
+            margin-top: 2rem;
+            color: rgba(240, 246, 252, 0.8);
+            line-height: 1.6;
+            text-align: left;
+            padding-left: 1.8rem;
+        }
 
-  @media(max-width:600px){
-    .hero h1{font-size:23px;}
-    .input-row{flex-direction:column;}
-    .nav-links a:not(.brand){font-size:13px;}
-    .res-row{flex-direction:column;align-items:stretch;}
-    .res-row .btn{align-self:flex-start;}
-  }
-</style>
+        .example-title {
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .example p {
+            margin: 0.9rem 0;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.95rem;
+            color: rgba(240, 246, 252, 0.9);
+            padding-left: 1.5rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
+        }
+
+        .example {
+            margin-top: 2.5rem;
+            padding: 1.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .url-part {
+            color: var(--accent-color);
+        }
+
+        /* ----- 页脚样式 (完全符合要求: 底部波浪 与 版权信息) ----- */
+        .footer {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 2rem;
+            padding: 1.8rem 1.5rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 20px 20px 0 0;
+            backdrop-filter: blur(4px);
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            flex-shrink: 0;           /* 防止被压缩 */
+        }
+
+        .footer h4 {
+            font-weight: 400;
+            font-size: 0.95rem;
+            color: rgba(240, 246, 252, 0.85);
+            letter-spacing: 0.3px;
+            line-height: 1.8;
+        }
+
+        .footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(88, 166, 255, 0.4);
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .footer a:hover {
+            color: #a2d2ff;
+            border-bottom-color: #a2d2ff;
+        }
+
+        .footer .container {
+            padding: 0;
+            width: 100%;
+        }
+
+        /* 按钮样式 (插件下载) */
+        .btn {
+            background: var(--accent-color);
+            border: none;
+            border-radius: 30px;
+            padding: 10px 28px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #0d1117;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(88, 166, 255, 0.3);
+            transition: all 0.25s ease;
+        }
+
+        .btn:hover {
+            background: #79b8ff;
+            transform: scale(1.02);
+            box-shadow: 0 6px 14px rgba(88, 166, 255, 0.5);
+        }
+
+        .github-corner {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 999;
+        }
+
+        .github-corner svg {
+            fill: var(--github-corner-bg);
+            color: var(--github-corner-fg);
+            position: absolute;
+            top: 0;
+            border: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+        }
+
+        .github-corner a,
+        .github-corner a:visited {
+            color: var(--github-corner-fg) !important;
+            text-decoration: none !important;
+        }
+
+        .github-corner .octo-body,
+        .github-corner .octo-arm {
+            fill: var(--github-corner-fg) !important;
+        }
+
+        .github-corner:hover .octo-arm {
+            animation: octocat-wave 560ms ease-in-out;
+        }
+
+        @keyframes octocat-wave {
+            0%, 100% { transform: rotate(0); }
+            20%, 60% { transform: rotate(-25deg); }
+            40%, 80% { transform: rotate(10deg); }
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .search-input {
+                height: 50px;
+                font-size: 0.9rem;
+            }
+
+            .search-button {
+                width: 38px;
+                height: 38px;
+            }
+
+            .example {
+                padding: 1rem;
+            }
+            
+            .example p {
+                font-size: 0.85rem;
+                padding-left: 0.8rem;
+                margin: 0.7rem 0;
+            }
+            
+            .example-title {
+                font-size: 0.95rem;
+                padding-bottom: 0.6rem;
+            }
+            
+            .github-corner svg {
+                width: 60px;
+                height: 60px;
+            }
+
+            .footer {
+                padding: 1.2rem 0.8rem;
+            }
+
+            .footer h4 {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="bg-layer" aria-hidden="true"></div>
+    <!-- GitHub Corner (保持不变) -->
+    <a href="https://github.com/xsxinghen" target="_blank" class="github-corner" aria-label="View source on Github">
+        <svg viewBox="0 0 250 250" aria-hidden="true">
+            <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+            <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+            <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+        </svg>
+    </a>
 
-<header class="navbar">
-  <div class="wrap nav-inner">
-    <a class="brand">Github加速</a>
-    <nav class="nav-links">
-      <a href="https://5xh.top/" target="_blank" rel="noopener"><i class="fa-solid fa-blog"></i> 作者博客</a>
-      <button class="nav-toggle" id="themeBtn" title="切换夜间模式"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
-    </nav>
-  </div>
-</header>
+    <!-- 主要包裹器，用于推页脚 -->
+    <div class="main-wrapper">
+        <div class="container">
+            <h1 class="title"><span class="emoji">📦</span>GitHub 文件加速</h1>
+            
+            <form onsubmit="toSubmit(event)" class="search-container">
+                <input 
+                    type="text" 
+                    class="search-input"
+                    name="q" 
+                    placeholder="请输入 GitHub 文件链接"
+                    pattern="^((https|http)://)?(github.com/.+?/.+?/(?:releases|archive|blob|raw|suites)|((?:raw|gist).(?:githubusercontent|github).com))/.+$" 
+                    required
+                >
+                <button type="submit" class="search-button">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M13 5l7 7-7 7M5 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </form>
 
-<main class="wrap" id="top">
+            <div class="example">
+                <div class="example-title">📃 合法输入示例：</div>
+                <p>📄 分支源码：<span class="url-part">github.com/hunshcn/project/archive/master.zip</span></p>
+                <p>📁 release源码：<span class="url-part">github.com/hunshcn/project/archive/v0.1.0.tar.gz</span></p>
+                <p>📂 release文件：<span class="url-part">github.com/hunshcn/project/releases/download/v0.1.0/example.zip</span></p>
+                <p>💾 commit文件：<span class="url-part">github.com/hunshcn/project/blob/123/filename</span></p>
+                <p>🖨️ gist：<span class="url-part">gist.githubusercontent.com/cielpy/123/raw/cmd.py</span></p>
+            </div>
 
-  <section class="hero">
-    <h1>让 GitHub 下载 <span class="hl">不再超时</span></h1>
-    <p>粘贴 GitHub 链接，选择加速节点，一键生成直链并跳转下载；支持 Git Clone / Curl / 直接链接三种方式。</p>
-  </section>
-
-  <section class="card" id="accel">
-    <div class="card-title"><span class="dot"></span> 在线下载加速</div>
-
-    <div class="node-select-row">
-      <label class="f" style="margin:0;">加速节点</label>
-      <select class="node-select" id="nodeSelect"></select>
-      <button class="btn btn-sm btn-ghost" id="speedBtn"><i class="fa-solid fa-gauge-high"></i> 重新测速</button>
-    </div>
-    <div class="node-info" id="nodeInfo">正在测速，请稍候…</div>
-
-    <div style="height:16px"></div>
-    <label class="f" for="ghUrl">粘贴 GitHub 文件 / Releases / 仓库链接</label>
-    <div class="input-row">
-      <input type="text" id="ghUrl" placeholder="https://github.com/owner/repo 或 releases / archive 链接" autocomplete="off">
-      <button class="btn" id="accelBtn"><i class="fa-solid fa-download"></i> 开始下载</button>
-    </div>
-
-    <div class="res-list" id="resList">
-      <div class="res-item hidden" id="cloneItem">
-        <div class="res-label"><span class="tag">GIT CLONE</span> 加速克隆命令</div>
-        <div class="res-row">
-          <input class="res-input" id="outClone" placeholder="输入链接并生成后自动显示" readonly>
-          <button class="btn btn-sm btn-ghost" data-copy="outClone"><i class="fa-regular fa-copy"></i> 复制</button>
+            <section class="example">
+                <div class="example-title">🧩 浏览器插件：</div>
+                <p>安装插件后，访问 GitHub 时自动按规则通过加速节点下载，无需手动拼接链接。支持 Edge / Chrome 及兼容内核浏览器。</p>
+                <p>插件托管于蓝奏云（点击下方按钮跳转下载页）。</p>
+                <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                    <a href="https://wwazk.lanzouq.com/icC5G4466y7c">
+                        <button class="btn" id="pluginDownBtn">下载插件</button>
+                    </a>
+                    <p style="width:100%; margin-top:10px; font-size:0.9rem; color:rgba(240,246,252,0.8);">
+                        1️⃣ 下载完成后解压 → 进入浏览器插件管理 → 开启"开发者模式" → 点击“加载解压缩的扩展” → 选择解压后的文件夹进行安装。
+                        <br>
+                        2️⃣ 下载完成后后缀可改为（.crx）→ 进入浏览器插件管理 → 开启"开发者模式" → 拖入 .crx 安装。
+                    </p>
+                </div>
+            </section>
         </div>
-      </div>
-      <div class="res-item hidden" id="curlItem">
-        <div class="res-label"><span class="tag">CURL</span> 命令行下载</div>
-        <div class="res-row">
-          <input class="res-input" id="outCurl" placeholder="输入链接并生成后自动显示" readonly>
-          <button class="btn btn-sm btn-ghost" data-copy="outCurl"><i class="fa-regular fa-copy"></i> 复制</button>
+    </div>
+
+    <!-- ===== 页脚 ===== -->
+    <div class="footer">
+        <div class="container">
+            <h4>
+                © 2026 星痕. All Rights Reserved . 
+                <br>
+                由
+                <a target="_blank" href="https://github.com/cmliu/CF-Workers-GitHub/">CF-Workers-GitHub</a> 提供技术支持 , 部署于
+                <a target="_blank" href="https://www.cloudflare.com/">Cloudflare pages</a> 上 .
+            </h4>
         </div>
-      </div>
-      <div class="res-item hidden" id="linkItem">
-        <div class="res-label"><span class="tag">LINK</span> 直接加速链接</div>
-        <div class="res-row">
-          <input class="res-input" id="outLink" placeholder="输入链接并生成后自动显示" readonly>
-          <button class="btn btn-sm btn-ghost" data-copy="outLink"><i class="fa-regular fa-copy"></i> 复制</button>
-        </div>
-      </div>
     </div>
-  </section>
 
-  <section class="card" id="plugin">
-    <div class="card-title"><span class="dot"></span> 浏览器插件</div>
-    <div class="plugin-box">
-      <div class="plugin-text">
-        <p>安装插件后，访问 GitHub 时自动按规则通过加速节点下载，无需手动拼接链接。支持 Edge / Chrome 及兼容内核浏览器。</p>
-        <button class="btn" id="pluginDownBtn"><i class="fa-solid fa-download"></i> 下载插件（.crx）</button>
-        <div class="hint" style="margin-top:10px"><i class="fa-solid fa-circle-info"></i> 点击下载后会弹出蓝奏云提取码；若浏览器提示"无法添加来自此网站的应用"，请先在 <code>chrome://extensions</code> 开启"开发者模式"后拖入 .crx 安装。</div>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<footer>
-  <div class="wrap">
-    <div style="margin-bottom:8px">
-      <a class="foot-icp" href="https://icp.gov.moe/?keyword=20263210" target="_blank" rel="noopener" title="萌ICP备 20263210号">
-        <i class="fa-solid fa-shield-halved"></i> 萌ICP备<b>20263210</b>号
-      </a>
-    </div>
-    <div>Copyright © 2026 嗷呜awaのGithub下载加速 All Rights Reserved.</div>
-  </div>
-</footer>
-
-<div class="modal-mask" id="pluginModal" role="dialog" aria-modal="true">
-  <div class="modal">
-    <div class="ic"><i class="fa-solid fa-key"></i></div>
-    <h3>蓝奏云提取码</h3>
-    <p>插件托管于蓝奏云，下载前请记下提取码（点击下方按钮跳转下载页）。</p>
-    <div class="pw">提取码：<b>空</b></div>
-    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <a class="btn" href="https://wwazk.lanzouq.com/icC5G4466y7c" target="_blank" rel="noopener" id="pluginGo"><i class="fa-solid fa-arrow-up-right-from-square"></i> 前往下载页</a>
-      <button class="btn btn-ghost" id="pluginClose"><i class="fa-solid fa-xmark"></i> 关闭</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-/* ===== 配置 ===== */
-const DEFAULT_SERVERS = [
-'https://gh.xh.1qw.top/',
-'https://gh.xh.xioo.me/',
-'https://gh.dpik.top/',
-];
-
-/* ===== 备用节点列表（测速失败时可手动选择） ===== */
-const BACKUP_SERVERS = [
-'https://gh.0044888.xyz/',
-'https://ghfile.geekertao.top',
-'https://github.tbap.top',
-'https://gh-proxy.com',
-'https://ghproxy.net',
-'https://cdn.gh-proxy.com',
-'https://github.dpik.top',
-'https://github-proxy.memory-echoes.cn',
-'https://gh.927223.xyz',
-'https://gh.bugdey.us.kg',
-'https://gh-proxy.net',
-'https://j.1lin.dpdns.org',
-'https://github.starrlzy.cn',
-'https://git.yylx.win',
-'https://ghm.078465.xyz',
-'https://gh.felicity.ac.cn',
-'https://cdn.akaere.online',
-'https://jiashu.1win.eu.org',
-'https://tvv.tw',
-'https://j.1win.ggff.net',
-'https://gitproxy.127731.xyz',
-'https://gh.inkchills.cn',
-'https://gh.catmak.name',
-'https://gh.b52m.cn',
-'https://down.mxw.xx.kg',
-'https://down.mxw.qzz.io',
-'https://github.mxw.qzz.io',
-'https://gh.acmsz.top',
-'https://gh.jjj.gv.uy',
-'https://slink.ltd',
-'https://github.tmby.shop',
-'https://ghpr.cc',
-'https://gh.tryxd.cn',
-'https://gitproxy.click',
-'https://github.chenc.dev',
-'https://gh.ddlc.top',
-'https://gitproxy.mrhjx.cn',
-'https://gh.sixyin.com',
-'https://gh.monlor.com',
-'https://ghpxy.hwinzniej.top',
-'https://git.669966.xyz',
-'https://ghfast.top',
-'https://gh.jasonzeng.dev',
-'https://github.geekery.cn',
-'https://gp.zkitefly.eu.org',
-'https://fastgit.cc',
-'https://ghproxy.1888866.xyz',
-'https://ghp.arslantu.xyz',
-'https://github.ednovas.xyz',
-'https://ghproxy.imciel.com',
-'https://ghproxy.cxkpro.top',
-'https://github.xxlab.tech',
-'https://gh.idayer.com',
-'https://free.cn.eu.org',
-'https://gh.chjina.com',
-'https://ghp.keleyaa.com',
-'https://proxy.yaoyaoling.net',
-'https://ghproxy.monkeyray.net',
-'https://gh.noki.icu',
-'https://g.blfrp.cn',
-'https://githubdog.com',
-'https://gh.meali.top',
-'https://777.z321.cc.cd',
-'https://gg.z321.cc.cd',
-'https://g.z321.cc.cd',
-'https://js.jiangss.shop',
-'https://gap.andyjin.website',
-'https://gh.my-website.ccwu.cc',
-'https://github.ikgy.top',
-'https://gh.07150721.xyz',
-'https://cfgh.ikgy.top',
-'https://xsadwsd.kdns.fr',
-'https://gh.ruan.dpdns.org',
-'https://ghproxy.felicity.land',
-'https://github.nswrz.cn',
-'https://gh.zhai.edu.pl',
-'https://gh.qfmc0721.cc.cd'
-];
-
-const SERVER_LIST_URL = 'https://raw.githubusercontent.com/xsxinghen/fx/refs/heads/main/ghd/server.txt';
-const SPEED_TIMEOUT = 5000;
-const CONCURRENCY = 8; // 8线程并行测速
-
-/* ===== DOM ===== */
-const $nodeSelect = document.getElementById('nodeSelect');
-const $nodeInfo   = document.getElementById('nodeInfo');
-const $speedBtn   = document.getElementById('speedBtn');
-const $ghUrl      = document.getElementById('ghUrl');
-const $accelBtn   = document.getElementById('accelBtn');
-const $toast      = document.getElementById('toast');
-const $pluginModal= document.getElementById('pluginModal');
-const $themeIcon  = document.getElementById('themeIcon');
-
-const $cloneItem = document.getElementById('cloneItem');
-const $curlItem  = document.getElementById('curlItem');
-const $linkItem  = document.getElementById('linkItem');
-const $outClone  = document.getElementById('outClone');
-const $outCurl   = document.getElementById('outCurl');
-const $outLink   = document.getElementById('outLink');
-
-let servers = [];
-let speedMap = new Map();
-let isSpeedTesting = false;
-let lastLink = '', lastClone = '', lastCurl = '';
-
-/* ===== 工具 ===== */
-function toast(msg){ $toast.textContent=msg; $toast.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>$toast.classList.remove('show'),2400); }
-function hostOf(u){ try{ return new URL(u).host; }catch{ return u; } }
-function ensureEndSlash(s){ return s.endsWith('/')?s:s+'/'; }
-function buildAccelUrl(rawUrl, server){
-  const noProto = rawUrl.replace(/^https?:\/\//i,'');
-  return ensureEndSlash(server) + noProto;
-}
-function isGithubUrl(u){
-  return /^https?:\/\/(github\.com|raw\.githubusercontent\.com|gist\.githubusercontent\.com|api\.github\.com)\//i.test(u.trim());
-}
-
-/* ===== 节点加载 + 自动测速（8线程并行，前端不显示并行细节） ===== */
-async function loadServersAndSpeed(){
-  // 1. 加载节点列表
-  let list = [];
-  try{
-    const c = new AbortController(); const t=setTimeout(()=>c.abort(),4000);
-    const r = await fetch(SERVER_LIST_URL,{signal:c.signal,mode:'cors'});
-    clearTimeout(t);
-    if(r.ok){ list = (await r.text()).split('\n').map(l=>l.trim()).filter(l=>l.startsWith('https://')); }
-  }catch(e){ /* 静默 */ }
-  servers = [...new Set([...DEFAULT_SERVERS, ...list])];
-  
-  renderNodeSelect(false);
-  $nodeInfo.innerHTML = '⏳ 正在测速，请稍候…';
-  
-  await runSpeedTest(true);
-}
-
-function renderNodeSelect(showSpeed = true){
-  const sel = $nodeSelect; sel.innerHTML='';
-  servers.forEach((s)=>{
-    const o=document.createElement('option'); o.value=s;
-    const isDef = DEFAULT_SERVERS.includes(s);
-    const ms = speedMap.get(s);
-    let label = (isDef?'★ ':'') + hostOf(s);
-    if(ms!=null) label += ` · ${ms}ms`;
-    else if(showSpeed) label += ' · 测速中…';
-    o.textContent = label;
-    sel.appendChild(o);
-  });
-  if(!showSpeed) {
-    for(let opt of sel.options) {
-      if(!speedMap.has(opt.value)) opt.text += ' · 测速中…';
-    }
-  }
-  onNodeChange();
-}
-
-/* ===== 测速核心：8线程并行 ===== */
-async function probeOne(server){
-  const url = ensureEndSlash(server) + 'favicon.ico?_=' + Math.random();
-  const c=new AbortController(); const t=setTimeout(()=>c.abort(),SPEED_TIMEOUT);
-  const start=performance.now();
-  try{ await fetch(url,{mode:'no-cors',signal:c.signal,cache:'no-store'}); return Math.round(performance.now()-start); }
-  catch(e){ return null; }
-  finally{ clearTimeout(t); }
-}
-
-async function runSpeedTest(autoSelect = true){
-  if(isSpeedTesting) return;
-  isSpeedTesting = true;
-  $speedBtn.disabled = true;
-  $nodeInfo.innerHTML = '⏳ 正在测速，请稍候…';
-  
-  // 8线程并行测速
-  const total = servers.length;
-  let completed = 0;
-  const results = new Map();
-  
-  // 分批并发
-  for(let i=0; i<total; i+=CONCURRENCY){
-    const batch = servers.slice(i, i+CONCURRENCY);
-    const promises = batch.map(async (s) => {
-      const ms = await probeOne(s);
-      results.set(s, ms);
-      speedMap.set(s, ms);
-      completed++;
-      // 更新下拉显示
-      const opt = $nodeSelect.querySelector(`option[value="${s}"]`);
-      if(opt) {
-        const isDef = DEFAULT_SERVERS.includes(s);
-        let label = (isDef?'★ ':'') + hostOf(s);
-        if(ms!=null) label += ` · ${ms}ms`;
-        else label += ' · 超时';
-        opt.textContent = label;
-      }
-      // 更新info，仅显示进度，不暴露并行细节
-      const fastest = getFastest();
-      if(fastest) {
-        $nodeInfo.innerHTML = `⏳ 测速中 ${completed}/${total} · 当前最快: <b>${hostOf(fastest)}</b> (${speedMap.get(fastest)}ms)`;
-      } else {
-        $nodeInfo.innerHTML = `⏳ 测速中 ${completed}/${total}`;
-      }
-    });
-    await Promise.all(promises);
-  }
-  
-  isSpeedTesting = false;
-  $speedBtn.disabled = false;
-  
-  const fastest = getFastest();
-  if(fastest && autoSelect) {
-    $nodeSelect.value = fastest;
-    onNodeChange();
-    toast('✅ 已自动选择最快节点：' + hostOf(fastest) + '（' + speedMap.get(fastest) + 'ms）');
-  } else if(!fastest) {
-    $nodeInfo.innerHTML = '⚠️ 所有节点超时，请手动选择或刷新重试';
-  } else {
-    onNodeChange();
-  }
-}
-
-function getFastest(){
-  const valid = [...speedMap.entries()].filter(([,ms])=>ms!=null);
-  if(!valid.length) return null;
-  valid.sort((a,b)=>a[1]-b[1]);
-  return valid[0][0];
-}
-
-/* ===== 自动匹配规则生成链接（输入即生成） ===== */
-function autoGenerate(){
-  const raw = $ghUrl.value.trim();
-  if(!raw || !isGithubUrl(raw)){
-    // 隐藏所有结果卡片
-    $cloneItem.classList.add('hidden');
-    $curlItem.classList.add('hidden');
-    $linkItem.classList.add('hidden');
-    return;
-  }
-  const node = $nodeSelect.value || servers[0];
-  if(!node) return;
-  const direct = buildAccelUrl(raw, node);
-  const clone = genClone(raw, node);
-  const curl = genCurl(raw, node);
-  lastLink=direct; lastClone=clone; lastCurl=curl;
-
-  $outLink.value = direct;
-  $outClone.value = clone;
-  $outCurl.value = curl;
-
-  $cloneItem.classList.remove('hidden');
-  $curlItem.classList.remove('hidden');
-  $linkItem.classList.remove('hidden');
-}
-
-function genClone(repoUrl, node){
-  let u = repoUrl.trim().replace(/\.git$/i,'');
-  const m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)/i);
-  if(m){ const noProto = u.replace(/^https?:\/\//i,''); return 'git clone ' + ensureEndSlash(node) + noProto + '.git'; }
-  return buildAccelUrl(u, node);
-}
-function genCurl(rawUrl, node){ return 'curl -L -O ' + JSON.stringify(buildAccelUrl(rawUrl,node)); }
-
-/* ===== 开始下载：新标签页打开 ===== */
-function startDownload(){
-  const raw = $ghUrl.value.trim();
-  if(!raw){ toast('请先粘贴 GitHub 链接'); $ghUrl.focus(); return; }
-  if(!isGithubUrl(raw)){ toast('请输入有效的 GitHub 链接'); return; }
-  const node = $nodeSelect.value || servers[0];
-  if(!node){ toast('没有可用的加速节点'); return; }
-  const direct = buildAccelUrl(raw, node);
-  window.open(direct, '_blank', 'noopener');
-  toast('🚀 已在新标签页打开下载链接');
-}
-
-/* ===== 交互 ===== */
-function onNodeChange(){
-  const cur = $nodeSelect.value || servers[0] || '';
-  const total = servers.length;
-  const isRemote = total > DEFAULT_SERVERS.length;
-  const ms = speedMap.get(cur);
-  let info = `共 <b>${total}</b> 个节点，当前选中 <b>${hostOf(cur)||'-'}</b>`;
-  if(ms!=null) info += ` （延迟 ${ms}ms）`;
-  else if(isSpeedTesting) info += ' （测速中…）';
-  else info += ' （未测速）';
-  if(!isRemote) info += ' （远程列表暂未部署，已使用内置默认节点）';
-  $nodeInfo.innerHTML = info;
-  // 切换节点时自动重新生成
-  autoGenerate();
-}
-$nodeSelect.addEventListener('change',onNodeChange);
-
-$speedBtn.addEventListener('click',()=>{
-  speedMap.clear();
-  renderNodeSelect(false);
-  runSpeedTest(true);
-});
-
-// 输入框内容变化时自动生成
-$ghUrl.addEventListener('input', autoGenerate);
-$ghUrl.addEventListener('paste', ()=>setTimeout(autoGenerate, 50));
-
-// 开始下载
-$accelBtn.addEventListener('click', startDownload);
-$ghUrl.addEventListener('keydown', e=>{ if(e.key==='Enter') startDownload(); });
-
-// 复制
-document.getElementById('resList').addEventListener('click',(e)=>{
-  const btn = e.target.closest('button[data-copy]');
-  if(!btn) return;
-  const copyId = btn.dataset.copy;
-  const input = document.getElementById(copyId);
-  if(!input || !input.value || input.value.startsWith('输入链接')){
-    toast('请先生成加速链接');
-    return;
-  }
-  navigator.clipboard.writeText(input.value).then(()=>toast('已复制')).catch(()=>{
-    const ta=document.createElement('textarea'); ta.value=input.value; document.body.appendChild(ta); ta.select();
-    try{ document.execCommand('copy'); toast('已复制'); }catch(_){}
-    document.body.removeChild(ta);
-  });
-});
-
-/* ===== 插件弹窗 ===== */
-function openPluginModal(){ $pluginModal.classList.add('show'); }
-function closePluginModal(){ $pluginModal.classList.remove('show'); }
-document.getElementById('pluginDownBtn').addEventListener('click',openPluginModal);
-document.getElementById('pluginClose').addEventListener('click',closePluginModal);
-$pluginModal.addEventListener('click',e=>{ if(e.target===$pluginModal) closePluginModal(); });
-
-/* ===== 主题 ===== */
-const themeBtn=document.getElementById('themeBtn');
-const saved=localStorage.getItem('theme');
-const sysDark=matchMedia('(prefers-color-scheme: dark)').matches;
-function applyTheme(th){
-  document.documentElement.setAttribute('data-theme',th);
-  localStorage.setItem('theme',th);
-  $themeIcon.className = th==='dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-}
-applyTheme(saved || (sysDark?'dark':'light'));
-themeBtn.addEventListener('click',()=>{ applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'); });
-
-/* ===== 启动 ===== */
-loadServersAndSpeed();
-</script>
+    <script>
+        function toSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementsByName('q')[0];
+            const baseUrl = location.href.substr(0, location.href.lastIndexOf('/') + 1);
+            window.open(baseUrl + input.value);
+        }
+    </script>
 </body>
 </html>
+	
