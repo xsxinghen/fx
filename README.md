@@ -7,7 +7,7 @@
 ├── gh/            # gh 管理页面
 ├── ghd/          # gh 多线路下载加速
 ├── ssl/           # ssl 申请证书页面
-├── elsfk/         # 俄罗斯方块小游戏
+├── yx/           # ai写的单机小游戏
 ├── README.md
 └── index.html
 
