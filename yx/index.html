@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>星痕的极简风站点</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #eef4fa;
+            color: #1e2a3a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .card {
+            max-width: 500px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 2rem;
+            padding: 2.8rem 2.5rem;
+            box-shadow: 0 8px 32px rgba(30, 60, 114, 0.06);
+            border: 1px solid rgba(200, 218, 240, 0.4);
+            text-align: center;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 16px 48px rgba(30, 60, 114, 0.08);
+        }
+
+        /* 头像 */
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b8cee8, #7aa5d9);
+            margin: 0 auto 1.2rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(90, 150, 210, 0.15);
+        }
+
+        /* 姓名 */
+        h1 {
+            font-weight: 550;
+            font-size: 1.8rem;
+            color: #1a314f;
+            margin-bottom: 0.2rem;
+            letter-spacing: -0.01em;
+        }
+
+        .title-role {
+            font-size: 1rem;
+            color: #4a6a8a;
+            font-weight: 400;
+            margin-bottom: 1.2rem;
+        }
+
+        /* 分割装饰 */
+        .divider {
+            width: 40px;
+            height: 3px;
+            background: #b8cee8;
+            border-radius: 4px;
+            margin: 0.8rem auto 1.2rem auto;
+        }
+
+        /* 简介 */
+        .bio {
+            color: #2a4058;
+            font-size: 0.98rem;
+            margin-bottom: 1.8rem;
+            padding: 0 0.2rem;
+        }
+
+        /* 信息列表 */
+        .info-list {
+            list-style: none;
+            text-align: left;
+            margin: 1.2rem 0 1.8rem 0;
+            padding: 0;
+            border-top: 1px solid #e8eef4;
+            padding-top: 1.2rem;
+        }
+
+        .info-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0;
+            color: #2a4058;
+            font-size: 0.92rem;
+        }
+
+        .info-list li .label {
+            color: #6a8aaa;
+            min-width: 60px;
+            font-weight: 400;
+        }
+
+        .info-list li .value {
+            color: #1a314f;
+        }
+
+        /* 社交链接 */
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0 0.8rem 0;
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            display: inline-block;
+            padding: 0.4rem 1.2rem;
+            border-radius: 2rem;
+            background: #eef4fa;
+            color: #3a5a7a;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border: 1px solid #dce6f0;
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        .social-link:hover {
+            background: #dce8f4;
+            transform: translateY(-2px);
+        }
+
+        /* 页脚 */
+        footer {
+            margin-top: 1.8rem;
+            font-size: 0.75rem;
+            color: #8aaac8;
+            border-top: 1px solid #e8eef4;
+            padding-top: 1.2rem;
+        }
+
+        /* 响应式 */
+        @media (max-width: 440px) {
+            .card {
+                padding: 2rem 1.5rem;
+            }
+            .avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2.4rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .info-list li {
+                flex-wrap: wrap;
+                gap: 0.2rem;
+            }
+            .info-list li .label {
+                min-width: 50px;
+            }
+        }
+
+        /* 入场动画 */
+        .fade-in {
+            animation: fadeUp 0.6s ease both;
+        }
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+    <!-- 添加统计插件 -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="8424d29a-6491-4245-85ce-c6196c6f4e35"></script>
+</head>
+<body>
+
+    <div class="card fade-in">
+       
+         <!-- 头像 -->
+        <img class="avatar" src="https://avatars.githubusercontent.com/u/84395857?v=4" alt="头像" />        
+
+        <!-- 简介  -->
+        <h1>星 痕</h1>
+        <div class="divider"></div>
+        <div class="title-role">关于我</div>
+        <p class="bio">
+            Hi~ 我是星痕：<br>这是一个小游戏站点。
+        </p>
+        <div class="divider"></div>
+        
+        <div class="social-links">
+            <a href="/俄罗斯方块.html" class="social-link">俄罗斯方块</a>
+            <a href="/五子棋.html"," class="social-link">五子棋</a>
+            <a href="/扫雷.html" class="social-link">扫雷</a>
+            
+        </div>
+
+        <!-- 联系 -->
+        <div class="title-role">关注&联系</div>
+        <p class="bio">
+            可以在这找我的主站哦~
+        </p>
+
+        <!-- 社交链接 -->
+        <div class="social-links">
+            <a href="https://github.com/xsxinghen" class="social-link">GitHub</a>
+            <a href="mailto:xsxinghen@5xh.top"," class="social-link">邮箱</a>
+            <a href="https://5xh.top" class="social-link">Blog</a>
+            <a href="https://xsxinghen.github.io" class="social-link">防失联</a>
+            
+        </div>
+
+        <footer>
+            <span>· 简单 · 真诚 ·</span>
+              <a class="transition link text-[var(--primary)] font-medium" target="_blank" href="https://cloud.umami.is/share/2QjfC9Zt1IAxCF0T">统计</a
+  >
+        </footer>
+    </div>
+
+</body>
+</html>
